@@ -1,6 +1,6 @@
 (*
  * OWL - an OCaml numerical library for scientific computing
- * Copyright (c) 2016-2017 Liang Wang <liang.wang@cl.caMD.ac.uk>
+ * Copyright (c) 2016-2017 Liang Wang <liang.wang@cl.cam.ac.uk>
  *)
 
 (** Lazy module
@@ -28,7 +28,7 @@ module Make
 
   type t
   (**
-``t`` is an abstract type to represent an experssion, it is also an alias
+``t`` is an abstract type to represent an expression, it is also an alias
 for type ``node``. Type ``node`` is only for internal use in the module.
    *)
 

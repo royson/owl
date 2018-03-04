@@ -53,7 +53,7 @@ standardized moment of ``x``.
  *)
 
 val central_moment : int -> float array -> float
-(** TODO *)
+(** ``central_moment n x`` calcuates the ``n`` th central moment of ``x``. *)
 
 val cov : ?m0:float -> ?m1:float -> float array -> float array -> float
 (** ``cov x0 x1`` calculates the covariance of ``x0`` and ``x1``, the mean of ``x0``
@@ -66,13 +66,13 @@ val corrcoef : float array -> float array -> float
  *)
 
 val kendall_tau : float array -> float array -> float
-(** TODO *)
+(** ``kendall_tau x y`` calcuates the Kendall Tau correlation between ``x`` and ``y``. *)
 
 val spearman_rho : float array -> float array -> float
-(** TODO *)
+(** ``spearman_rho x y`` calcuates the Spearman Rho correlation between ``x`` and ``y``. *)
 
 val autocorrelation : ?lag:int -> float array -> float
-(** TODO *)
+(** ``autocorrelation ~lag x`` calcuates the autocorrelation of ``x`` with the given ``lag``. *)
 
 val percentile : float array -> float -> float
 (** ``percentile x p`` returns the ``p`` percentile of the data ``x``. ``p`` is between
@@ -103,19 +103,28 @@ val minmax : float array -> float * float
 (** ``minmax x`` returns both ``(minimum, maximum)`` elements in ``x``. *)
 
 val min_i : float array -> int
-(** TODO *)
+(** ``min_i x`` returns the index of the minimum in ``x``. *)
 
 val max_i : float array -> int
-(** TODO *)
+(** ``max_i x`` returns the index of the maximum in ``x``. *)
 
 val minmax_i : float array -> int * int
-(** TODO *)
+(** ``minmax_i x`` returns the indices of both minimum and maximum in ``x``. *)
 
 val sort : ?inc:bool -> float array -> float array
-(** TODO *)
+(** ``sort x`` sorts the elements in the ``x`` in increasing order if
+``inc = true``, otherwise in decreasing order if ``inc=false``. By default,
+``inc`` is ``true``. Note a copy is returned, the original data is not modified.
+ *)
 
 val argsort : ?inc:bool -> float array -> int array
-(** TODO *)
+(**
+``argsort x`` sorts the elements in ``x`` and returns the indices mapping of
+the elements in the current array to their original position in ``x``.
+
+The sorting is in increasing order if ``inc = true``, otherwise in decreasing
+order if ``inc=false``. By default, ``inc`` is ``true``.
+ *)
 
 val rank : ?ties_strategy:[ `Average | `Min | `Max ] -> float array -> float array
 (**
@@ -134,7 +143,7 @@ Note that the ranking starts with one!
  *)
 
 val histogram : float array -> int -> int array
-(** TODO *)
+(** ``histogram x n`` creates a histogram of ``n`` buckets for ``x``. *)
 
 val ecdf : float array -> float array * float array
 (**
@@ -144,10 +153,10 @@ order with duplicates removed.
  *)
 
 val z_score : mu:float -> sigma:float -> float array -> float array
-(** TODO *)
+(** ``z_score x`` calcuates the z score of a given array ``x``. *)
 
 val t_score : float array -> float array
-(** TODO *)
+(** ``t_score x`` calcuates the t score of a given array ``x``. *)
 
 val normlise_pdf : float array -> float array
 (** TODO *)
@@ -303,6 +312,27 @@ val wilcoxon : ?alpha:float -> ?side:tail -> float array -> float array -> hypot
 
 val uniform_int_rvs : a:int -> b:int -> int
 (** TODO *)
+
+val binomial_rvs : p:float -> n:int -> int
+(** ``binomial_rvs p n`` *)
+
+val binomial_pdf : int -> p:float -> n:int -> float
+(** ``binomial_pdf k ~p ~n`` *)
+
+val binomial_logpdf : int -> p:float -> n:int -> float
+(** ``binomial_logpdf k ~p ~n`` *)
+
+val binomial_cdf : int -> p:float -> n:int -> float
+(** ``binomial_cdf k ~p ~n`` *)
+
+val binomial_logcdf : int -> p:float -> n:int -> float
+(** ``binomial_logcdf k ~p ~n`` *)
+
+val binomial_sf : int -> p:float -> n:int -> float
+(** ``binomial_sf k ~p ~n`` *)
+
+val binomial_logsf : int -> p:float -> n:int -> float
+(** ``binomial_logsf k ~p ~n`` *)
 
 val hypergeometric_rvs : good:int -> bad:int -> sample:int -> int
 (** TODO *)

@@ -1,6 +1,31 @@
-### 0.3.3 (in progress)
+### 0.3.5 (in progress)
 
-* Optimise the Base library
+* Add functions for numerical integration.
+* Add functions for interoperation.
+* Add several root-finding algorithms.
+
+
+### 0.3.4 (2018-02-26)
+
+* Update README, ACKNOWLEDGEMENT, and etc.
+* Initial implementation of OpenCL Context module.
+* Fix some bugs and improve the performance.
+* Add Adam learning rate algorithm in Optimise module.
+* Add a number of statistical functions into Stats.
+* Enhance View functor and add more functions.
+* Include and documentation of NLP modules.
+* Add dockerfile for various linux distributions.
+
+
+### 0.3.3 (2018-02-12)
+
+* Fix some bugs and improve the performance.
+* Integrate with Owl's documentation system.
+* Add native C implementation of pooling operations.
+* Add more operators in Operator module.
+* Add more functions in Linalg module.
+* Optimise the Base library.
+* Add more unit tests.
 
 
 ### 0.3.2 (2018-02-08)
