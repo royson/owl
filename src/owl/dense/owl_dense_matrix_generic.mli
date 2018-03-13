@@ -363,12 +363,16 @@ val row : ('a, 'b) t -> int -> ('a, 'b) t
 ``row x i`` returns row ``i`` of ``x``.  Note: Unlike ``col``, the return value
 is simply a view onto the original row in ``x``, so modifying ``row``'s
 value also alters ``x``.
+
+The function supports nagative indices.
  *)
 
 val col : ('a, 'b) t -> int -> ('a, 'b) t
 (**
 ``col x j`` returns column ``j`` of ``x``.  Note: Unlike ``row``, the return
 value is a copy of the original row in ``x``.
+
+The function supports nagative indices.
  *)
 
 val rows : ('a, 'b) t -> int array -> ('a, 'b) t
@@ -376,12 +380,16 @@ val rows : ('a, 'b) t -> int array -> ('a, 'b) t
 ``rows x a`` returns the rows (defined in an int array ``a``) of ``x``. The
 returned rows will be combined into a new dense matrix. The order of rows in
 the new matrix is the same as that in the array ``a``.
+
+The function supports nagative indices.
  *)
 
 val cols : ('a, 'b) t -> int array -> ('a, 'b) t
 (**
 Similar to ``rows``, ``cols x a`` returns the columns (specified in array ``a``)
 of x in a new dense matrix.
+
+The function supports nagative indices.
  *)
 
 val resize : ?head:bool -> ('a, 'b) t -> int array -> ('a, 'b) t
@@ -469,6 +477,15 @@ val concat_horizontal : ('a, 'b) t -> ('a, 'b) t -> ('a, 'b) t
 therefore their row numbers must be the same.
 
 The associated operator is ``@||``, please refer to :doc:`owl_operator`.
+ *)
+
+val concat_vh : ('a, 'b) t array array -> ('a, 'b) t
+(**
+``concat_vh`` is used to assemble small parts of matrices into a bigger one.
+E.g. ``[| [|a; b; c|]; [|d; e; f|]; [|g; h; i|] |]`` will be concatenated into
+a big matrix as follows.
+
+Please refer to :doc:`owl_dense_ndarray_generic`. for details.
  *)
 
 val concatenate : ?axis:int -> ('a, 'b) t array -> ('a, 'b) t
@@ -637,6 +654,12 @@ val scani_2d : ?axis:int -> (int -> int -> 'a -> 'a -> 'a) -> ('a, 'b) t -> ('a,
 val filteri_2d : (int -> int -> 'a -> bool) -> ('a, 'b) t -> (int * int) array
 (** Similar to `filteri` but 2d indices ``(i,j)`` are returned. *)
 
+val iter2i_2d : (int -> int -> 'a -> 'c -> unit) -> ('a, 'b) t -> ('c, 'd) t -> unit
+(** Similar to `iter2i` but 2d indices ``(i,j)`` are passed to the user function. *)
+
+val map2i_2d : (int -> int -> 'a -> 'a -> 'a) -> ('a, 'b) t -> ('a, 'b) t -> ('a, 'b) t
+(** Similar to `map2i` but 2d indices ``(i,j)`` are passed to the user function. *)
+
 val iter2i : (int -> 'a -> 'b -> unit) -> ('a, 'c) t -> ('b, 'd) t -> unit
 (**
 Similar to ``iteri`` but applies to two matrices ``x`` and ``y``. Both ``x``
@@ -669,10 +692,10 @@ Similar to ``iteri_rows`` except row number is not passed to ``f``.
  *)
 
 val iter2i_rows : (int -> ('a, 'b) t -> ('a, 'b) t -> unit) -> ('a, 'b) t -> ('a, 'b) t -> unit
-(** TODO *)
+(** ``iter2_rows f x y`` iterates rows of two matrices ``x`` and ```y``. *)
 
 val iter2_rows : (('a, 'b) t -> ('a, 'b) t -> unit) -> ('a, 'b) t -> ('a, 'b) t -> unit
-(** TODO *)
+(** Similar to ``iter2iter2i_rows`` but without passing in indices.  *)
 
 val iteri_cols : (int -> ('a, 'b) t -> unit) -> ('a, 'b) t -> unit
 (**
@@ -1159,15 +1182,17 @@ val load : ('a, 'b) kind -> string -> ('a, 'b) t
 by using ``save`` function.
  *)
 
-val save_txt : ('a, 'b) t -> string -> unit
+val save_txt : ?sep:string -> ('a, 'b) t -> string -> unit
 (**
-``save_txt x f`` save the matrix ``x`` into a tab-delimited text file ``f``.
-The operation can be very time consuming.
+``save_txt ~sep x f`` save the matrix ``x`` into a tab-delimited text file ``f``
+delimited by the specified string ``sep``. Note that the operation can be very
+time consuming.
  *)
 
-val load_txt : (float, 'a) kind -> string -> (float, 'a) t
+val load_txt : ?sep:string -> ('a, 'b) kind -> string -> ('a, 'b) t
 (**
-``load_txt f`` load a tab-delimited text file ``f`` into a matrix.
+``load_txt ~sep k f`` load a text file ``f`` into a matrix of type ``k``. The
+delimitor is specified by ``sep`` which can be a regular expression.
  *)
 
 
@@ -1250,13 +1275,6 @@ val minmax_i : ('a, 'b) t -> ('a * int array) * ('a * int array)
 ``minmax_i x`` returns ``((min_v,min_i), (max_v,max_i))`` where ``(min_v,min_i)``
 is the minimum value in ``x`` along with its index while ``(max_v,max_i)`` is the
 maximum value along its index.
- *)
-
-val inv : ('a, 'b) t -> ('a, 'b) t
-(**
-``inv x`` calculates the inverse of an invertible square matrix ``x``
-  such that ``x *@ x = I`` wherein ``I`` is an identity matrix.  (If ``x``
-  is singular, ``inv`` will return a useless result.)
  *)
 
 val trace : ('a, 'b) t -> 'a
@@ -1819,6 +1837,7 @@ val dot : ('a, 'b) t -> ('a, 'b) t -> ('a, 'b) t
  *)
 
 val add_diag : ('a, 'b) t -> 'a -> ('a, 'b) t
+(** TODO *)
 
 val pow : ('a, 'b) t -> ('a, 'b) t -> ('a, 'b) t
 (**
@@ -1834,16 +1853,6 @@ val scalar_pow : 'a -> ('a, 'b) t -> ('a, 'b) t
 val pow_scalar : ('a, 'b) t -> 'a -> ('a, 'b) t
 (**
 ``pow_scalar x a``
- *)
-
-val mpow : ('a, 'b) t -> float -> ('a, 'b) t
-(**
-``mpow x r`` returns the dot product of square matrix ``x`` with
-itself ``r`` times, and more generally raises the matrix to the
-``r``th power.  ``r`` is a float that must be equal to an integer;
-it can be be negative, zero, or positive. Non-integer exponents
-are not yet implemented. (If ``r`` is negative, ``mpow`` calls ``inv``,
-and warnings in documentation for ``inv`` apply.)
  *)
 
 val atan2 : (float, 'a) t -> (float, 'a) t -> (float, 'a) t
