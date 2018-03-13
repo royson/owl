@@ -14,6 +14,7 @@ open Owl_optimise.S
 
 module type EngineSig = sig
 
+
   type param_context
   type barrier = ASP | BSP | SSP | PSP
 
@@ -33,7 +34,7 @@ module type EngineSig = sig
 
   val register_pull : (('a * 'b) list -> ('a * 'c) list) -> unit
 
-  val register_push : ('a -> ('b * 'c) list -> ('b * 'c) list) -> unit
+  val register_push : ('a -> ('b * 'c) list -> (('b * 'c) list * 'd)) -> unit
 
   val register_stop : (param_context ref -> bool) -> unit
 
@@ -54,6 +55,8 @@ module type ModelSig = sig
 
   val copy : network -> network
 
+  val forward: network -> t -> t * t array array
+
   val train_generic : ?state:Checkpoint.state -> ?params:Params.typ -> ?init_model:bool -> network -> t -> t -> Checkpoint.state
 
 end
@@ -70,6 +73,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     mutable model  : M.network;
     mutable data_x : t;
     mutable data_y : t;
+    mutable loss   : float list;
   }
 
 
@@ -80,6 +84,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     model;
     data_x;
     data_y;
+    loss = [];
   }
 
 
@@ -89,6 +94,44 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     let par1 = M.mkpar model1 in
     let delta = Owl_utils.aarr_map2 (fun a0 a1 -> Maths.(a0 - a1)) par0 par1 in
     M.update model0 delta
+
+  (* Plot the loss function per update *)
+  let plot_loss losses =
+    let open Owl_plot in
+    (* Might replace List with an Array with a length counter instead *)
+    let losses = List.rev losses in
+    
+    (* Debug. Print losses. *)
+    (* List.map (Owl_log.info "Loss: %.6f") losses; *)
+
+    (* Bug: Currently crashes on Ubuntu 16.04. Writing to file instead.*)
+    (* let h = create ("Distributed MNist MLP Adam 0.01 2W.png") in
+    let f x = (int_of_float (x -. 1.)) |> (List.nth losses) in
+    let x_range = float_of_int ((List.length losses)) in
+    let y_range l = List.fold_left Pervasives.max (List.hd l) l |> Pervasives.(+.) in
+    Owl_log.debug "Plotting loss function.. ";
+    set_foreground_color h 0 0 0;
+    set_background_color h 255 255 255;
+    set_title h ("Distributed MNist MLP Adam 0.01 (2W)");
+    set_xrange h 0. (x_range +. 10.);
+    set_yrange h 0. (y_range losses 2.0);
+    set_xlabel h "Updates";
+    set_ylabel h "Loss";
+    set_font_size h 8.;
+    set_pen_size h 3.;
+
+    plot_fun ~h f 1. x_range;
+    
+    output h;; *)
+    
+    let open Printf in
+    let file = "loss.txt" in
+    (* Write losses to file to print graph separately*)
+    let oc = open_out file in 
+    fprintf oc "[";
+    List.iter (fprintf oc "%.6f;") losses;
+    fprintf oc "]";      
+    close_out oc                
 
 
   (* retrieve local model at parameter server, init if none *)
@@ -108,12 +151,24 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     let tasks = List.map (fun x ->
       (x, [(task.id, model)])
     ) workers
-    in tasks
+    in
+    tasks
+
+
+  let calc_loss model (params:Params.typ) x y =
+    let xt, yt = (Batch.run params.batch) x y 0 in
+    let yt', _ = (M.forward model) xt  in
+    let loss = (Loss.run params.loss) yt yt' in
+    (* take the mean of the loss *)
+    let loss = Maths.(loss / (F (Mat.row_num yt |> float_of_int))) in
+    Owl_log.warn "Current Loss = %.6f." (unpack_flt loss);
+    unpack_flt loss 
 
 
   let pull task vars =
     let n = E.worker_num () |> float_of_int in
     assert (n >= 1.); (* at least one worker *)
+    (* Owl_log.warn "PULL!"; *)
     (* there should be only one item in list *)
     List.map (fun (k, model1) ->
       let model0 = local_model task in
@@ -125,6 +180,14 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       |> M.update model0;
       task.model <- model0;
       E.set task.id task.model;
+      (* Calculate loss for Model *)
+      let params = task.params in
+      let x = task.data_x in
+      let y = task.data_y in
+      let loss = calc_loss (M.copy task.model) params x y in
+      (* Plot loss *)
+      task.loss <- loss :: task.loss;
+      plot_loss task.loss;
       (k, model0)
     ) vars
 
@@ -138,19 +201,36 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       let x = task.data_x in
       let y = task.data_y in
       let state = match task.state with
-        | Some state -> M.(train_generic ~state ~params ~init_model:false model x y)
+        | Some state -> if state.batches <> (state.current_batch - 1) then
+                          M.(train_generic ~state ~params ~init_model:false model x y)
+                        else
+                          state
         | None       -> M.(train_generic ~params ~init_model:false model x y)
       in
       Checkpoint.(state.stop <- false);
+(*       Owl_log.warn "PUSH!";
+      Owl_log.warn "BATCHES: %i" state.batches; 
+      Owl_log.warn "CURRENT BATCH: %i" state.current_batch;
+      Owl_log.warn "ID: %i" id;
+      Owl_log.warn "Task ID: %i" task.id; *)
       task.state <- Some state;
+      
       (* only send out delta model *)
       delta_model model task.model;
-      (k, M.copy model) ) vars in
-    updates
-
+      (k, M.copy model)      
+       ) vars in
+      match task.state with
+        | Some state -> 
+            if state.batches = (state.current_batch - 1) then
+              (updates, true)
+            else
+              (updates, false)
+        | None -> (updates, false)
+        (* | None -> Owl_log.error "Task not executed" *)
 
   (* FIXME: currently running forever *)
-  let stop task context = false
+  let stop task _context = false
+    (* !_context.finish = StrMap.cardinal !_context.workers *)
 
 
   let train_generic ?params nn x y jid url =
