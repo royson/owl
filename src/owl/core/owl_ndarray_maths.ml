@@ -5,7 +5,7 @@
 
 open Bigarray
 
-open Owl_dense_common_types
+open Owl_core_types
 
 
 (* basic operations on individual element *)
@@ -172,81 +172,6 @@ let _owl_gaussian_fun : type a b. (a, b) kind -> (float -> a) = function
 
 
 (* call functions in owl native c *)
-
-let _owl_spatial_conv : type a b . (a, b) kind -> (a, b) owl_arr_op22 = function
-  | Float32   -> Owl_ndarray.owl_float32_ndarray_conv_spatial
-  | Float64   -> Owl_ndarray.owl_float64_ndarray_conv_spatial
-  | _         -> failwith "_owl_spatial_conv: unsupported operation"
-
-let _owl_spatial_conv_backward_input : type a b . (a, b) kind -> (a, b) owl_arr_op23 = function
-  | Float32   -> Owl_ndarray.owl_float32_ndarray_conv_spatial_backward_input
-  | Float64   -> Owl_ndarray.owl_float64_ndarray_conv_spatial_backward_input
-  | _         -> failwith "_owl_spatial_conv_backward_input: unsupported operation"
-
-let _owl_spatial_conv_backward_kernel : type a b . (a, b) kind -> (a, b) owl_arr_op23 = function
-  | Float32   -> Owl_ndarray.owl_float32_ndarray_conv_spatial_backward_kernel
-  | Float64   -> Owl_ndarray.owl_float64_ndarray_conv_spatial_backward_kernel
-  | _         -> failwith "_owl_spatial_conv_backward_kernel: unsupported operation"
-
-let _owl_cuboid_conv : type a b . (a, b) kind -> (a, b) owl_arr_op24 = function
-  | Float32   -> Owl_ndarray.owl_float32_ndarray_conv_cuboid
-  | Float64   -> Owl_ndarray.owl_float64_ndarray_conv_cuboid
-  | _         -> failwith "_owl_cuboid_conv: unsupported operation"
-
-let _owl_cuboid_conv_backward_input : type a b . (a, b) kind -> (a, b) owl_arr_op25 = function
-  | Float32   -> Owl_ndarray.owl_float32_ndarray_conv_cuboid_backward_input
-  | Float64   -> Owl_ndarray.owl_float64_ndarray_conv_cuboid_backward_input
-  | _         -> failwith "_owl_cuboid_conv_backward_input: unsupported operation"
-
-let _owl_cuboid_conv_backward_kernel : type a b . (a, b) kind -> (a, b) owl_arr_op25 = function
-  | Float32   -> Owl_ndarray.owl_float32_ndarray_conv_cuboid_backward_kernel
-  | Float64   -> Owl_ndarray.owl_float64_ndarray_conv_cuboid_backward_kernel
-  | _         -> failwith "_owl_cuboid_conv_backward_kernel: unsupported operation"
-
-let _owl_spatial_max_pooling : type a b . (a, b) kind -> (a, b) owl_arr_op26 = function
-  | Float32   -> Owl_ndarray.owl_float32_ndarray_maxpool_spatial
-  | Float64   -> Owl_ndarray.owl_float64_ndarray_maxpool_spatial
-  | _         -> failwith "_owl_spatial_max_pooling: unsupported operation"
-
-let _owl_spatial_avg_pooling : type a b . (a, b) kind -> (a, b) owl_arr_op26 = function
-  | Float32   -> Owl_ndarray.owl_float32_ndarray_avgpool_spatial
-  | Float64   -> Owl_ndarray.owl_float64_ndarray_avgpool_spatial
-  | _         -> failwith "_owl_spatial_avg_pooling: unsupported operation"
-
-let _owl_cuboid_max_pooling : type a b . (a, b) kind -> (a, b) owl_arr_op27 = function
-  | Float32   -> Owl_ndarray.owl_float32_ndarray_maxpool_cuboid
-  | Float64   -> Owl_ndarray.owl_float64_ndarray_maxpool_cuboid
-  | _         -> failwith "_owl_cuboid_max_pooling: unsupported operation"
-
-let _owl_cuboid_avg_pooling : type a b . (a, b) kind -> (a, b) owl_arr_op27 = function
-  | Float32   -> Owl_ndarray.owl_float32_ndarray_avgpool_cuboid
-  | Float64   -> Owl_ndarray.owl_float64_ndarray_avgpool_cuboid
-  | _         -> failwith "_owl_cuboid_avg_pooling: unsupported operation"
-
-let _owl_spatial_max_pooling_argmax : type a b . (a, b) kind -> (a, b) owl_arr_op28 = function
-  | Float32   -> Owl_ndarray.owl_float32_ndarray_maxpool_argmax_spatial
-  | Float64   -> Owl_ndarray.owl_float64_ndarray_maxpool_argmax_spatial
-  | _         -> failwith "_owl_spatial_max_pooling_argmax: unsupported operation"
-
-let _owl_spatial_max_pooling_backward : type a b . (a, b) kind -> (a, b) owl_arr_op29 = function
-  | Float32   -> Owl_ndarray.owl_float32_ndarray_maxpool_spatial_backward
-  | Float64   -> Owl_ndarray.owl_float64_ndarray_maxpool_spatial_backward
-  | _         -> failwith "_owl_spatial_max_pooling_backward: unsupported operation"
-
-let _owl_spatial_avg_pooling_backward : type a b . (a, b) kind -> (a, b) owl_arr_op30 = function
-  | Float32   -> Owl_ndarray.owl_float32_ndarray_avgpool_spatial_backward
-  | Float64   -> Owl_ndarray.owl_float64_ndarray_avgpool_spatial_backward
-  | _         -> failwith "_owl_spatial_avg_pooling_backward: unsupported operation"
-
-let _owl_cuboid_max_pooling_backward : type a b . (a, b) kind -> (a, b) owl_arr_op31 = function
-  | Float32   -> Owl_ndarray.owl_float32_ndarray_maxpool_cuboid_backward
-  | Float64   -> Owl_ndarray.owl_float64_ndarray_maxpool_cuboid_backward
-  | _         -> failwith "_owl_cuboid_max_pooling_backward: unsupported operation"
-
-let _owl_cuboid_avg_pooling_backward : type a b . (a, b) kind -> (a, b) owl_arr_op32 = function
-  | Float32   -> Owl_ndarray.owl_float32_ndarray_avgpool_cuboid_backward
-  | Float64   -> Owl_ndarray.owl_float64_ndarray_avgpool_cuboid_backward
-  | _         -> failwith "_owl_cuboid_avg_pooling_backward: unsupported operation"
 
 external owl_float32_copy : int -> ('a, 'b) owl_arr -> int -> int -> ('a, 'b) owl_arr -> int -> int -> unit = "float32_copy" "float32_copy_impl"
 external owl_float64_copy : int -> ('a, 'b) owl_arr -> int -> int -> ('a, 'b) owl_arr -> int -> int -> unit = "float64_copy" "float64_copy_impl"
@@ -2365,6 +2290,30 @@ let _owl_exponential : type a b. (a, b) kind -> (a, b) owl_arr_op13 = function
   | Float32        -> owl_float32_exponential
   | Float64        -> owl_float64_exponential
   | _              -> failwith "_owl_exponential: unsupported operation"
+
+external owl_float32_diff : int -> int -> ('a, 'b) owl_arr -> int -> int -> int -> ('a, 'b) owl_arr -> int -> int -> int -> unit = "float32_diff" "float32_diff_impl"
+external owl_float64_diff : int -> int -> ('a, 'b) owl_arr -> int -> int -> int -> ('a, 'b) owl_arr -> int -> int -> int -> unit = "float64_diff" "float64_diff_impl"
+external owl_complex32_diff : int -> int -> ('a, 'b) owl_arr -> int -> int -> int -> ('a, 'b) owl_arr -> int -> int -> int -> unit = "complex32_diff" "complex32_diff_impl"
+external owl_complex64_diff : int -> int -> ('a, 'b) owl_arr -> int -> int -> int -> ('a, 'b) owl_arr -> int -> int -> int -> unit = "complex64_diff" "complex64_diff_impl"
+external owl_int8_diff : int -> int -> ('a, 'b) owl_arr -> int -> int -> int -> ('a, 'b) owl_arr -> int -> int -> int -> unit = "int8_diff" "int8_diff_impl"
+external owl_uint8_diff : int -> int -> ('a, 'b) owl_arr -> int -> int -> int -> ('a, 'b) owl_arr -> int -> int -> int -> unit = "uint8_diff" "uint8_diff_impl"
+external owl_int16_diff : int -> int -> ('a, 'b) owl_arr -> int -> int -> int -> ('a, 'b) owl_arr -> int -> int -> int -> unit = "int16_diff" "int16_diff_impl"
+external owl_uint16_diff : int -> int -> ('a, 'b) owl_arr -> int -> int -> int -> ('a, 'b) owl_arr -> int -> int -> int -> unit = "uint16_diff" "uint16_diff_impl"
+external owl_int32_diff : int -> int -> ('a, 'b) owl_arr -> int -> int -> int -> ('a, 'b) owl_arr -> int -> int -> int -> unit = "int32_diff" "int32_diff_impl"
+external owl_int64_diff : int -> int -> ('a, 'b) owl_arr -> int -> int -> int -> ('a, 'b) owl_arr -> int -> int -> int -> unit = "int64_diff" "int64_diff_impl"
+
+let _owl_diff : type a b. (a, b) kind -> (a, b) owl_arr_op14 = function
+  | Float32        -> owl_float32_diff
+  | Float64        -> owl_float64_diff
+  | Complex32      -> owl_complex32_diff
+  | Complex64      -> owl_complex64_diff
+  | Int8_signed    -> owl_int8_diff
+  | Int8_unsigned  -> owl_uint8_diff
+  | Int16_signed   -> owl_int16_diff
+  | Int16_unsigned -> owl_uint16_diff
+  | Int32          -> owl_int32_diff
+  | Int64          -> owl_int64_diff
+  | _              -> failwith "_owl_diff: unsupported operation"
 
 external owl_float32_cumsum : int -> int -> ('a, 'b) owl_arr -> int -> int -> int -> ('a, 'b) owl_arr -> int -> int -> int -> unit = "float32_cumsum" "float32_cumsum_impl"
 external owl_float64_cumsum : int -> int -> ('a, 'b) owl_arr -> int -> int -> int -> ('a, 'b) owl_arr -> int -> int -> int -> unit = "float64_cumsum" "float64_cumsum_impl"

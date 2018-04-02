@@ -498,7 +498,14 @@ lowest dimension on a marix, i.e., rows.
 
 val split : ?axis:int -> int array -> ('a, 'b) t -> ('a, 'b) t array
 (**
-``split ~axis parts x``
+``split ~axis parts x`` splits an ndarray ``x`` into parts along the specified
+``axis``. This function is the inverse operation of ``concatenate``. The
+elements in ``x`` must sum up to the dimension in the specified axis.
+ *)
+
+val split_vh : (int * int) array array -> ('a, 'b) t -> ('a, 'b) t array array
+(**
+Please refer to :doc:`owl_dense_ndarray_generic`. for details.
  *)
 
 val transpose : ('a, 'b) t -> ('a, 'b) t
@@ -1714,10 +1721,10 @@ val vecnorm' : ?p:float -> ('a, 'b) t -> 'a
 (** Refer to :doc:`owl_dense_ndarray_generic`. *)
 
 val max_pool : ?padding:padding -> (float, 'a) t -> int array -> int array -> (float, 'a) t
-(** TODO *)
+(** Refer to :doc:`owl_dense_ndarray_generic`. *)
 
 val avg_pool : ?padding:padding -> (float, 'a) t -> int array -> int array -> (float, 'a) t
-(** TODO *)
+(** Refer to :doc:`owl_dense_ndarray_generic`. *)
 
 val cumsum : ?axis:int -> ('a, 'b) t -> ('a, 'b) t
 (**
@@ -1737,6 +1744,21 @@ val cummin : ?axis:int -> ('a, 'b) t -> ('a, 'b) t
 val cummax : ?axis:int -> ('a, 'b) t -> ('a, 'b) t
 (**
 ``cummax ~axis x`` : performs cumulative ``max`` along ``axis`` dimension.
+ *)
+
+val diff : ?axis:int -> ?n:int -> ('a, 'b) t -> ('a, 'b) t
+(**
+``diff ~axis ~n x`` calculates the ``n``-th difference of ``x`` along the
+specified ``axis``.
+
+Parameters:
+  * ``axis``: axis to calculate the difference. The default value is the
+    highest dimension.
+  * ``n``: how many times to calculate the difference. The default value is 1.
+
+Return:
+  * The difference ndarray y. Note the shape of ``y`` 1 less than that of ``x``
+    along specified axis.
  *)
 
 val angle : (Complex.t, 'a) t -> (Complex.t, 'a) t
@@ -1837,7 +1859,9 @@ val dot : ('a, 'b) t -> ('a, 'b) t -> ('a, 'b) t
  *)
 
 val add_diag : ('a, 'b) t -> 'a -> ('a, 'b) t
-(** TODO *)
+(** ``add_diag x a`` adds ``a`` to the diagonal elements in ``x``. A new copy
+of the data is returned.
+ *)
 
 val pow : ('a, 'b) t -> ('a, 'b) t -> ('a, 'b) t
 (**

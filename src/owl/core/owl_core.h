@@ -8,7 +8,9 @@
 
 #include "owl_macros.h"
 #include "owl_slicing.h"
-#include <stdio.h>
+#include "owl_ndarray_contract.h"
+#include <stdio.h> // DEBUG
+
 
 /** Core function declaration **/
 
@@ -18,6 +20,30 @@ extern int c_ndarray_numel (struct caml_ba_array *X);
 extern int c_ndarray_stride_dim (struct caml_ba_array *X, int d);
 
 extern int c_ndarray_slice_dim (struct caml_ba_array *X, int d);
+
+extern void c_float32_ndarray_transpose (struct slice_pair *sp);
+
+extern void c_float64_ndarray_transpose (struct slice_pair *sp);
+
+extern void c_complex32_ndarray_transpose (struct slice_pair *sp);
+
+extern void c_complex64_ndarray_transpose (struct slice_pair *sp);
+
+extern void c_float32_ndarray_contract_one (struct contract_pair *sp);
+
+extern void c_float64_ndarray_contract_one (struct contract_pair *sp);
+
+extern void c_complex32_ndarray_contract_one (struct contract_pair *sp);
+
+extern void c_complex64_ndarray_contract_one (struct contract_pair *sp);
+
+extern void c_float32_ndarray_contract_two (struct contract_pair *sp);
+
+extern void c_float64_ndarray_contract_two (struct contract_pair *sp);
+
+extern void c_complex32_ndarray_contract_two (struct contract_pair *sp);
+
+extern void c_complex64_ndarray_contract_two (struct contract_pair *sp);
 
 extern void c_float32_matrix_swap_rows (float *x, int m, int n, int i, int j);
 
@@ -84,9 +110,9 @@ extern void c_complex64_ndarray_set_fancy (struct fancy_pair *sp);
 
 // compare two numbers (real & complex & int)
 
-#define CEQF(X,Y) ((crealf(X) == crealf(Y)) && (cimagf(X) < cimagf(Y)))
+#define CEQF(X,Y) ((crealf(X) == crealf(Y)) && (cimagf(X) == cimagf(Y)))
 
-#define CEQ(X,Y) ((creal(X) == creal(Y)) && (cimag(X) < cimag(Y)))
+#define CEQ(X,Y) ((creal(X) == creal(Y)) && (cimag(X) == cimag(Y)))
 
 #define CNEQF(X,Y) ((crealf(X) != crealf(Y)) || (cimagf(X) != cimagf(Y)))
 

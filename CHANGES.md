@@ -1,6 +1,24 @@
-### 0.3.6 (in progress)
+### 0.3.7 (in progress)
 
 * Fix some bugs and improve performance.
+* Move more pure OCaml implementation to base library.
+* Add a new math module to support complex numbers.
+* Improve the configuration and building system.
+* Change template code into C header files.
+
+
+### 0.3.6 (2018-03-22)
+
+* Fix some bugs and improve performance.
+* Add more unit tests for Ndarray module.
+* Add version control in Zoo gist system.
+* Add tensor contract operations in Ndarray.
+* Add more documentation of various functions.
+* Add support of complex numbers of convolution and pooling functions.
+* Enhance Owl's own Array submodule in Utils module.
+* Fix pretty printer for rank 0 ndarrays.
+* Add functions to iterate slices in an ndarray.
+* Adjust the structure of OpenCL module.
 
 
 ### 0.3.5 (2018-03-12)
