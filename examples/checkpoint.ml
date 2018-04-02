@@ -15,9 +15,9 @@ let make_network input_shape =
   |> dropout 0.1
   |> fully_connected 1024 ~act_typ:Activation.Relu
   |> linear 10 ~act_typ:Activation.Softmax
-  |> get_network
- *)
-    |> conv2d [|3;3;1;32|] [|1;1|] ~act_typ:Activation.Relu
+  |> get_network *)
+
+(*     |> conv2d [|3;3;1;32|] [|1;1|] ~act_typ:Activation.Relu
     |> conv2d [|3;3;32;64|] [|1;1|] ~act_typ:Activation.Relu
     |> max_pool2d [|2;2|] [|2;2|]
     |> dropout 0.5
@@ -26,13 +26,13 @@ let make_network input_shape =
     |> normalisation
     |> dropout 0.5
     |> linear 10 ~act_typ:Activation.Softmax
-    |> get_network
+    |> get_network *)
     (* MLP *)
-(*   |> flatten 
+  |> flatten 
   |> linear 256 ~act_typ:Activation.Tanh
   |> linear 128 ~act_typ:Activation.Relu
   |> linear 10 ~act_typ:Activation.Softmax
-  |> get_network *)
+  |> get_network
 
 
 let train () =
@@ -43,7 +43,7 @@ let train () =
   let chkpt state =
     let open Checkpoint in
     if state.current_batch mod (state.batches - 1) = 0 then (
-      Owl_log.info "Plotting loss function..";   
+(*       Owl_log.info "Plotting loss function..";   
       let z = Array.map unpack_flt state.loss in
       let c = Array.sub z 0 state.batches in 
       (* Array.map (Owl_log.info "%.6f") c; *)
@@ -64,7 +64,7 @@ let train () =
 
       Plot.plot_fun ~h f 1. (unpack_flt x_range);
 
-      Plot.output h;
+      Plot.output h; *)
 
       state.stop <- true;
     )

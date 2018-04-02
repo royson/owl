@@ -67,13 +67,15 @@ end
 module Make (M : ModelSig) (E : EngineSig) = struct
 
   type task = {
-    mutable id     : int;
-    mutable state  : Checkpoint.state option;
-    mutable params : Params.typ;
-    mutable model  : M.network;
-    mutable data_x : t;
-    mutable data_y : t;
-    mutable loss   : float list;
+    mutable id        : int;
+    mutable state     : Checkpoint.state option;
+    mutable params    : Params.typ;
+    mutable model     : M.network;
+    mutable data_x    : t;
+    mutable data_y    : t;
+    mutable loss      : float list; (* For graph plot *)
+    mutable start_at  : float;      (* Time training starts *)
+    mutable time      : float list; (* For graph plot *)
   }
 
 
@@ -85,6 +87,8 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     data_x;
     data_y;
     loss = [];
+    start_at = Unix.gettimeofday ();
+    time = [];
   }
 
 
@@ -133,6 +137,48 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     fprintf oc "]";      
     close_out oc                
 
+  (* Plot the loss function per time *)
+  let plot_loss_time losses time =
+    let open Owl_plot in
+    (* Might replace List with an Array with a length counter instead *)
+    let losses = List.rev losses in
+    let time = List.rev time in
+
+    (* Bug: Currently crashes on Ubuntu 16.04. Writing to file instead.*)
+    (* let h = create ("Time - Distributed MNist Conv2d Adam 0.01.png") in
+    let x_range = float_of_int ((List.length losses)) in
+    let y_range l = List.fold_left Pervasives.max (List.hd l) l |> Pervasives.(+.) in
+    Owl_log.debug "Plotting loss function.. ";
+    set_foreground_color h 0 0 0;
+    set_background_color h 255 255 255;
+    set_title h ("Distributed MNist Conv2d Adam 0.01 (2W)");
+    set_xrange h 0. (x_range +. 10.);
+    set_yrange h 0. (y_range losses 2.0);
+    set_xlabel h "Time (s)";
+    set_ylabel h "Loss";
+    set_font_size h 8.;
+    set_pen_size h 3.;
+    let t' = Array.of_list time in
+    let x = Owl.Mat.of_array t' 1 (Array.length t') in
+    let l' = Array.of_list losses in
+    let y = Owl.Mat.of_array l' 1 (Array.length l') in
+    plot ~h x y;
+    
+    output h;; *)
+    
+    let open Printf in
+    let file = "losstime.txt" in
+    (* Write losses to file to print graph separately*)
+    let oc = open_out file in 
+    fprintf oc "[";
+    List.iter (fprintf oc "%.6f;") losses;
+    fprintf oc "]\n";     
+    fprintf oc "[";
+    List.iter (fprintf oc "%.6f;") time;
+    fprintf oc "]";
+    close_out oc
+
+                   
 
   (* retrieve local model at parameter server, init if none *)
   let local_model task =
@@ -185,9 +231,11 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       let x = task.data_x in
       let y = task.data_y in
       let loss = calc_loss (M.copy task.model) params x y in
-      (* Plot loss *)
+      let t = Unix.gettimeofday () -. task.start_at in
       task.loss <- loss :: task.loss;
-      plot_loss task.loss;
+      task.time <- t :: task.time;
+      (* plot_loss task.loss; *) (* Plot Loss * Update *)
+      plot_loss_time task.loss task.time; (* Plot Loss * Time *)
       (k, model0)
     ) vars
 
@@ -226,9 +274,9 @@ module Make (M : ModelSig) (E : EngineSig) = struct
             else
               (updates, false)
         | None -> (updates, false)
-        (* | None -> Owl_log.error "Task not executed" *)
+        (* | None -> failwith "Task not executed" *)
 
-  (* FIXME: currently running forever *)
+  (* FIXME: currently check is done in actor *)
   let stop task _context = false
     (* !_context.finish = StrMap.cardinal !_context.workers *)
 
