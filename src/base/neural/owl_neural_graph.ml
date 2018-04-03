@@ -525,6 +525,34 @@ module Make
      update: function to update the weights according to the gradient
      save: function to save the model for checkpoint
    *)
+
+  (* Returns the gradient and loss after 1 batch *)
+  let calculate_gradient ?params ?(init_model=true) nn x y =
+    if init_model = true then init nn;
+    let f = forward nn in
+    let b = backward nn in
+    let p = match params with
+      | Some p -> p
+      | None   -> Optimise.Params.default ()
+    in
+    let gs, loss = Optimise.calculate_gradient_worker p f b x y in
+    gs, loss
+
+  (* Returns state of model given gradient and loss *)
+  let update_network ?state ?params ?(init_model=true) nn gradient loss x =
+    if init_model = true then init nn;
+    let w = mkpar nn in
+    let l = loss in
+    let g = gradient in
+    let u = update nn in
+    let s = save nn in
+    let p = match params with
+      | Some p -> p
+      | None   -> Optimise.Params.default ()
+    in
+    Optimise.update_network_server ?state p w g l u s x
+    
+
   let train_generic ?state ?params ?(init_model=true) nn x y =
     if init_model = true then init nn;
     let f = forward nn in

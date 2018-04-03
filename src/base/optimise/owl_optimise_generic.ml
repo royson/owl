@@ -560,6 +560,103 @@ module Make
     (* return both loss history and weight *)
     state, !w
 
+  (* This function is designed for parallel workers to calculate the gradient
+     given a neural network and its data.
+     TODO: Data Parallelism:
+     Does not support mini-batch. May assume batch data is assigned in the 
+     future and xt and yt are already provided. Currently loads all x and y. *)
+  let calculate_gradient_worker params forward backward x y =
+    let open Params in
+    let bach_fun = Batch.run params.batch in
+    let loss_fun = Loss.run params.loss in
+    let regl_fun = Regularisation.run params.regularisation in
+    let clip_fun = Clipping.run params.clipping in    
+    let xt, yt = bach_fun x y 0 in
+    let yt', ws = forward xt in
+    let loss = loss_fun yt yt' in
+    (* take the mean of the loss *)
+    let loss = Maths.(loss / (F (Mat.row_num yt |> float_of_int))) in
+    (* add regularisation term if necessary *)
+    let reg = match params.regularisation <> Regularisation.None with
+      | true  -> Owl_utils.aarr_fold (fun a w -> Maths.(a + regl_fun w)) (F 0.) ws
+      | false -> F 0.
+    in
+    let loss = Maths.(loss + reg) in
+    let _, gs' = backward loss in
+    let loss = primal' loss in
+    (* clip the gradient if necessary *)
+    let gs' = Owl_utils.aarr_map clip_fun gs' in
+    (* Return loss and gs' *)
+    gs', loss
+
+  (* This function is designed for parallel parameter servers to update the
+     network given the gradient and loss from its workers. 
+     TODO: Currently do not support custom Checkpoints *)
+  let update_network_server ?state params weights gradient loss update save x =
+    let open Params in
+    if params.verbosity = true && state = None then
+      print_endline (Params.to_string params);
+    let grad_fun = Gradient.run params.gradient in
+    let rate_fun = Learning_Rate.run params.learning_rate in
+    let momt_fun = Momentum.run params.momentum in
+    let upch_fun = Learning_Rate.update_ch params.learning_rate in
+    let stop_fun = Stopping.run params.stopping in
+    let chkp_fun = Checkpoint.run params.checkpoint in    
+
+    (* init new or continue previous state of optimisation process *)
+    let state = match state with
+      | Some state -> state
+      | None       -> (
+          let batches_per_epoch = Batch.batches params.batch x in
+          let state = Checkpoint.init_state batches_per_epoch params.epochs in
+          
+          (* variables used for specific gradient method *)
+          Checkpoint.(state.gs <- gradient);
+          Checkpoint.(state.ps <- Owl_utils.aarr_map Maths.neg gradient);
+          Checkpoint.(state.us <- Owl_utils.aarr_map (fun _ -> F 0.) gradient);
+          Checkpoint.(state.ch <- Owl_utils.aarr_map (fun _ -> [|F 0.; F 0.|]) gradient);
+          Checkpoint.(state.loss.(0) <- loss);
+          state
+        )
+    in
+
+    (* check if the stopping criterion is met *)
+    Checkpoint.(state.stop <- stop_fun (unpack_flt loss));
+    (* checkpoint of the optimisation if necessary *)
+    chkp_fun save Checkpoint.(state.current_batch) loss state;
+    (* print out the current state of optimisation *)
+    if params.verbosity = true then Checkpoint.print_state_info state;
+    (* calculate gradient descent *)
+    let ps' = Checkpoint.(Owl_utils.aarr_map4 (grad_fun (fun a -> a)) weights state.gs state.ps gradient) in
+    (* update gcache if necessary *)
+    Checkpoint.(state.ch <- Owl_utils.aarr_map2 upch_fun gradient state.ch);
+    (* adjust direction based on learning_rate *)
+    let us' = Checkpoint.(
+      Owl_utils.aarr_map3 (fun p' g' c ->
+        Maths.(p' * rate_fun state.current_batch g' c)
+      ) ps' gradient state.ch
+    )
+    in
+    (* adjust direction based on momentum *)
+    let us' = Owl_utils.aarr_map2 momt_fun Checkpoint.(state.us) us' in
+    (* update the weight *)
+    let ws' = Owl_utils.aarr_map2 (fun w u -> Maths.(w + u)) weights us' in
+    update ws';
+    (* save historical data *)
+    if params.momentum <> Momentum.None then Checkpoint.(state.us <- us');
+    Checkpoint.(state.gs <- gradient);
+    Checkpoint.(state.ps <- ps');
+    Checkpoint.(state.current_batch <- state.current_batch + 1);
+
+    (* print optimisation summary *)
+    if params.verbosity = true && Checkpoint.(state.current_batch >= state.batches) then
+      Checkpoint.print_summary state;
+    (* return the current state *)
+    state
+
+
+          
+
 
   (* This function is specifically designed for minimising the weights in a
      neural network of graph structure. In Owl's earlier versions, the functions
