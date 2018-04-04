@@ -28,21 +28,36 @@ let make_network input_shape =
     |> linear 10 ~act_typ:Activation.Softmax
     |> get_network *)
     (* MLP *)
-  |> flatten 
+(*   |> flatten 
   |> linear 256 ~act_typ:Activation.Tanh
   |> linear 128 ~act_typ:Activation.Relu
   |> linear 10 ~act_typ:Activation.Softmax
   |> get_network
-
+ *)
+  |> normalisation ~decay:0.9
+  |> conv2d [|3;3;3;32|] [|1;1|] ~act_typ:Activation.Relu
+  |> conv2d [|3;3;32;32|] [|1;1|] ~act_typ:Activation.Relu ~padding:VALID
+  |> max_pool2d [|2;2|] [|2;2|] ~padding:VALID
+  |> dropout 0.1
+  |> conv2d [|3;3;32;64|] [|1;1|] ~act_typ:Activation.Relu
+  |> conv2d [|3;3;64;64|] [|1;1|] ~act_typ:Activation.Relu ~padding:VALID
+  |> max_pool2d [|2;2|] [|2;2|] ~padding:VALID
+  |> dropout 0.1
+  |> fully_connected 512 ~act_typ:Activation.Relu
+  |> linear 10 ~act_typ:Activation.Softmax
+  |> get_network
 
 let train () =
-  let x, _, y = Dataset.load_mnist_train_data_arr () in
-  let network = make_network [|28;28;1|] in
+  (* let x, _, y = Dataset.load_mnist_train_data_arr () in *)
+  let x, _, y = Dataset.load_cifar_train_data 1 in
+  (* let network = make_network [|28;28;1|] in *)
+  let network = make_network [|32;32;3|] in
 
   (* define checkpoint function *)
+  
   let chkpt state =
     let open Checkpoint in
-    if state.current_batch mod (state.batches - 1) = 0 then (
+    if state.current_batch mod 1 = 0 then (
 (*       Owl_log.info "Plotting loss function..";   
       let z = Array.map unpack_flt state.loss in
       let c = Array.sub z 0 state.batches in 
@@ -65,6 +80,19 @@ let train () =
       Plot.plot_fun ~h f 1. (unpack_flt x_range);
 
       Plot.output h; *)
+      let z = Array.map unpack_flt state.loss in
+      let c = Array.sub z 0 state.batches in 
+      let open Printf in
+      let file = "loss.txt" in
+      (* Write losses to file to print graph separately*)
+      let oc = open_out file in 
+      fprintf oc "[";
+      List.iter (fprintf oc "%.6f;") (Array.to_list c);
+      fprintf oc "]\n";     
+      close_out oc;
+      let oc = open_out_gen [Open_append; Open_creat] 0o666 "time.txt" in
+      fprintf oc "%.6f;" (Unix.gettimeofday () -. state.start_at);
+      close_out oc;
 
       state.stop <- true;
     )
@@ -72,8 +100,8 @@ let train () =
 
   (* plug in chkpt into params *)
   let params = Params.config
-    ~batch:(Batch.Sample 100) ~learning_rate:(Learning_Rate.Adam (0.01, 0.9, 0.999))
-    ~checkpoint:(Checkpoint.Custom chkpt) ~stopping:(Stopping.Const 1e-6) 0.1
+    ~batch:(Batch.Sample 100) ~learning_rate:(Learning_Rate.Adagrad 0.001)
+    ~checkpoint:(Checkpoint.Custom chkpt) ~stopping:(Stopping.Const 1e-6) 10.0
   in
   (* keep restarting the optimisation until it finishes *)
   let state = Graph.train ~params network x y in
