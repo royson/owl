@@ -31,15 +31,11 @@ module type EngineSig = sig
 
   val register_schedule : ('a list -> ('a * ('b * 'c) list) list) -> unit
 
-  val register_pull : (param_context ref -> ('a * (t array array * t)) list -> ('a * 'd) list) -> unit
+  val register_pull : (('a * (t array array * t)) list -> ('a * 'd) list) -> unit
 
   val register_push : ('a -> ('b * 'c) list -> ('b * ('d * 'e)) list) -> unit
 
   val register_stop : (param_context ref -> bool) -> unit
-
-  val set_finish : bool -> unit
-
-  val get_finish : unit -> bool
 
 end
 
@@ -98,14 +94,6 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     start_at = Unix.gettimeofday ();
     time = [];
   }
-
-
-  (* calculate \delta model = model0 - model1, save the result in model0 *)
-  let delta_model model0 model1 =
-    let par0 = M.mkpar model0 in
-    let par1 = M.mkpar model1 in
-    let delta = Owl_utils.aarr_map2 (fun a0 a1 -> Maths.(a0 - a1)) par0 par1 in
-    M.update model0 delta
 
   (* Plot the loss function per update *)
   let plot_loss losses =
@@ -198,6 +186,11 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       E.get task.id |> fst;
     )
 
+  let exit_condition task_id =
+    try E.get (string_of_int task_id ^ "finish") |> fst
+  with Not_found -> false
+
+
 
   let schedule task workers =
     (* get model, if none then init locally *)
@@ -219,7 +212,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     unpack_flt loss 
  *)
 
-  let pull task context vars =
+  let pull task vars =
     let n = E.worker_num () |> float_of_int in
     assert (n >= 1.); (* at least one worker *)
     (* Owl_log.warn "PULL!"; *)
@@ -233,11 +226,13 @@ module Make (M : ModelSig) (E : EngineSig) = struct
         | Some state -> M.(update_network ~state ~params ~init_model:false model gradient loss x)
         | None       -> M.(update_network ~params ~init_model:false model gradient loss x)
       in
-      (* !context.finish <- Checkpoint.(state.stop); *)
-      E.set_finish Checkpoint.(state.stop);
+      
       task.state <- Some state; 
       task.model <- model;
-      E.set task.id task.model;
+      (* Model is saved in on return *)
+      (* E.set task.id task.model; *)
+      E.set (string_of_int task.id ^ "finish") Checkpoint.(state.stop);
+      
       (* Calculate loss for Model *)
       (* let params = task.params in
       let x = task.data_x in
@@ -265,11 +260,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
        ) vars 
 
   (* Stop scheduling if model finishes training *)
-  let stop task context = 
-    match E.get_finish () with
-    | true -> Owl_log.warn "[Task ended]"; true
-    | false -> false
-    (* E.get_finish () *)
+  let stop task context = exit_condition task.id
 
 
   let train_generic ?params nn x y jid url =
