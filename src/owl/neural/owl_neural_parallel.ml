@@ -32,9 +32,9 @@ module type EngineSig = sig
 
   val register_schedule : ('a list -> ('a * ('b * 'c) list) list) -> unit
 
-  val register_pull : (('a * 'b) list -> ('a * 'c) list) -> unit
+  val register_pull : (('a * ('b * 'd)) list -> ('a * 'c) list) -> unit
 
-  val register_push : ('a -> ('b * 'c) list -> (('b * 'c) list * 'd)) -> unit
+  val register_push : ('a -> ('b * 'c) list -> (('b * ('c * 'e)) list * 'd)) -> unit
 
   val register_stop : (param_context ref -> bool) -> unit
 
@@ -201,7 +201,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     tasks
 
 
-  let calc_loss model (params:Params.typ) x y =
+(*   let calc_loss model (params:Params.typ) x y =
     let xt, yt = (Batch.run params.batch) x y 0 in
     let yt', _ = (M.forward model) xt  in
     let loss = (Loss.run params.loss) yt yt' in
@@ -209,14 +209,15 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     let loss = Maths.(loss / (F (Mat.row_num yt |> float_of_int))) in
     Owl_log.warn "Current Loss = %.6f." (unpack_flt loss);
     unpack_flt loss 
-
+ *)
 
   let pull task vars =
     let n = E.worker_num () |> float_of_int in
     assert (n >= 1.); (* at least one worker *)
     (* Owl_log.warn "PULL!"; *)
     (* there should be only one item in list *)
-    List.map (fun (k, model1) ->
+    List.map (fun (k, v) ->
+      let model1, loss = v in
       let model0 = local_model task in
       let par0 = M.mkpar model0 in
       let par1 = M.mkpar model1 in
@@ -227,10 +228,10 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       task.model <- model0;
       E.set task.id task.model;
       (* Calculate loss for Model *)
-      let params = task.params in
+(*       let params = task.params in
       let x = task.data_x in
       let y = task.data_y in
-      let loss = calc_loss (M.copy task.model) params x y in
+      let loss = calc_loss (M.copy task.model) params x y in *)
       let t = Unix.gettimeofday () -. task.start_at in
       task.loss <- loss :: task.loss;
       task.time <- t :: task.time;
@@ -255,6 +256,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
                           state
         | None       -> M.(train_generic ~params ~init_model:false model x y)
       in
+      let loss = state.loss.(state.current_batch - 1) |> unpack_flt in
       Checkpoint.(state.stop <- false);
 (*       Owl_log.warn "PUSH!";
       Owl_log.warn "BATCHES: %i" state.batches; 
@@ -265,7 +267,8 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       
       (* only send out delta model *)
       delta_model model task.model;
-      (k, M.copy model)      
+
+      (k, (M.copy model, loss))      
        ) vars in
       match task.state with
         | Some state -> 
