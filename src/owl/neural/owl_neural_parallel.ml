@@ -31,11 +31,13 @@ module type EngineSig = sig
 
   val register_schedule : ('a list -> ('a * ('b * 'c) list) list) -> unit
 
-  val register_pull : (('a * (t array array * t)) list -> ('a * 'd) list) -> unit
+  val register_pull : (('a * ('b * 'c * 'e)) list -> ('a * 'd) list) -> unit
 
-  val register_push : ('a -> ('b * 'c) list -> ('b * ('d * 'e)) list) -> unit
+  val register_push : ('a -> ('b * 'c) list -> ('b * ('d * 'e * 'f)) list) -> unit
 
   val register_stop : (param_context ref -> bool) -> unit
+
+  val get_address : unit -> string
 
 end
 
@@ -60,8 +62,8 @@ module type ModelSig = sig
 
   val calculate_gradient : ?params:Params.typ -> ?init_model:bool -> network -> t -> t -> t array array * t
 
-  val update_network : ?state:Checkpoint.state -> ?params:Params.typ -> ?init_model:bool -> network -> t array array -> 
-                        t -> t -> Checkpoint.state
+  val update_network : ?state:Checkpoint.state -> ?params:Params.typ -> ?init_model:bool -> network 
+                      -> (t array array * t array array) -> t -> t -> Checkpoint.state
 
 end
 
@@ -80,6 +82,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     mutable loss      : float list; (* For graph plot *)
     mutable start_at  : float;      (* Time training starts *)
     mutable time      : float list; (* For graph plot *)
+    mutable total_gs  : t array array (* Total gradient for AdaptiveRevision*)
   }
 
 
@@ -93,6 +96,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     loss = [];
     start_at = Unix.gettimeofday ();
     time = [];
+    total_gs = Owl_utils.aarr_map (fun _ -> F 0.) (M.mkpar model);
   }
 
   (* Plot the loss function per update *)
@@ -193,9 +197,14 @@ module Make (M : ModelSig) (E : EngineSig) = struct
 
 
   let schedule task workers =
+    let params = task.params in
     (* get model, if none then init locally *)
     let model = local_model task in
+    (* If AdaptiveRevision, record total gradient for worker before schedule *)
     let tasks = List.map (fun x ->
+      let _ = match params.learning_rate with 
+      | AdaptiveRev _ -> E.set (x ^ "gradient") task.total_gs
+      | _             -> () in
       (x, [(task.id, model)])
     ) workers
     in
@@ -218,20 +227,32 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     (* Owl_log.warn "PULL!"; *)
     (* there should be only one item in list *)
     List.map (fun (k, v) ->
-      let gradient, loss = v in
+      let gradient, loss, address = v in
       let params = task.params in
       let x = task.data_x in
       let model = local_model task in
+      (* Calculate gradient for revision step *)
+      let gradient_back = match params.learning_rate with 
+      | AdaptiveRev _ -> let gradient_old = E.get (address ^ "gradient") |> fst in
+                              Owl_utils.aarr_map2 (fun w u -> Maths.(w - u)) task.total_gs gradient_old
+      | _             -> Owl_utils.aarr_map (fun _ -> F 0.) gradient
+      in
+      let gradients = gradient, gradient_back in
       let state = match task.state with
-        | Some state -> M.(update_network ~state ~params ~init_model:false model gradient loss x)
-        | None       -> M.(update_network ~params ~init_model:false model gradient loss x)
+        | Some state -> M.(update_network ~state ~params ~init_model:false model gradients loss x)
+        | None       -> M.(update_network ~params ~init_model:false model gradients loss x)
       in
       
-      task.state <- Some state; 
       task.model <- model;
-      (* Model is saved in on return *)
-      (* E.set task.id task.model; *)
+      E.set task.id task.model;
+      task.state <- Some state; 
       E.set (string_of_int task.id ^ "finish") Checkpoint.(state.stop);
+
+      (* Update total gradient in AdaptiveRevision *)
+      let _ = match params.learning_rate with 
+      | AdaptiveRev _ -> task.total_gs <- Owl_utils.aarr_map2 (fun w u -> Maths.(w + u)) task.total_gs gradient
+      | _             -> () 
+      in
       
       (* Calculate loss for Model *)
       (* let params = task.params in
@@ -255,7 +276,8 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       let params = task.params in
       let x = task.data_x in
       let y = task.data_y in
-      let result = M.(calculate_gradient ~params ~init_model:false model x y) in
+      let grad, loss = M.(calculate_gradient ~params ~init_model:false model x y) in
+      let result = (grad, loss, E.get_address ()) in
       (k, result)      
        ) vars 
 

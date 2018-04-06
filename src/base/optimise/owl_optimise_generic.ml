@@ -60,13 +60,14 @@ module Make
   module Learning_Rate = struct
 
     type typ =
-      | Adagrad   of float
-      | Const     of float
-      | Decay     of float * float
-      | Exp_decay of float * float
-      | RMSprop   of float * float
-      | Adam      of float * float * float
-      | Schedule  of float array
+      | Adagrad      of float
+      | Const        of float
+      | Decay        of float * float
+      | Exp_decay    of float * float
+      | RMSprop      of float * float
+      | Adam         of float * float * float
+      | Schedule     of float array
+      | AdaptiveRev  of float (* Distributed training only*)
 
     let run = function
       | Adagrad a        -> fun _ _ c -> Maths.(F a / sqrt (c.(0) + F 1e-32))
@@ -80,15 +81,17 @@ module Make
           c.(0) / (sqrt c.(1) + F 1e-8) /
           (g + F 1e-32))
       | Schedule a       -> fun i _ _ -> F a.(i mod (Array.length a))
+      | AdaptiveRev a    -> fun _ _ c -> Maths.(F a / sqrt (c.(1) + F 1e-32))
 
     let default = function
-      | Adagrad _   -> Adagrad 0.01
-      | Const _     -> Const 0.001
-      | Decay _     -> Decay (0.1, 0.1)
-      | Exp_decay _ -> Exp_decay (1., 0.1)
-      | RMSprop _   -> RMSprop (0.001, 0.9)
-      | Adam _      -> Adam (0.001, 0.9, 0.999)
-      | Schedule _  -> Schedule [|0.001|]
+      | Adagrad _     -> Adagrad 0.01
+      | Const _       -> Const 0.001
+      | Decay _       -> Decay (0.1, 0.1)
+      | Exp_decay _   -> Exp_decay (1., 0.1)
+      | RMSprop _     -> RMSprop (0.001, 0.9)
+      | Adam _        -> Adam (0.001, 0.9, 0.999)
+      | Schedule _    -> Schedule [|0.001|]
+      | AdaptiveRev _ -> AdaptiveRev 0.01
 
     let update_ch typ g c = match typ with
       | Adagrad _        -> [|Maths.(c.(0) + g * g); c.(1)|]
@@ -107,6 +110,7 @@ module Make
       | RMSprop (a, k)   -> Printf.sprintf "rmsprop (%g, %g)" a k
       | Adam (a, b1, b2) -> Printf.sprintf "adam (%g, %g, %g)" a b1 b2
       | Schedule a       -> Printf.sprintf "schedule %i" (Array.length a)
+      | AdaptiveRev a    -> Printf.sprintf "adaptive_revision %g" a
 
   end
 
@@ -592,7 +596,7 @@ module Make
   (* This function is designed for parallel parameter servers to update the
      network given the gradient and loss from its workers. 
      TODO: Currently do not support custom Checkpoints *)
-  let update_network_server ?state params weights gradient loss update save x =
+  let update_network_server ?state params weights gradients loss update save x =
     let open Params in
     if params.verbosity = true && state = None then
       print_endline (Params.to_string params);
@@ -601,7 +605,8 @@ module Make
     let momt_fun = Momentum.run params.momentum in
     let upch_fun = Learning_Rate.update_ch params.learning_rate in
     let stop_fun = Stopping.run params.stopping in
-    let chkp_fun = Checkpoint.run params.checkpoint in    
+    let chkp_fun = Checkpoint.run params.checkpoint in
+    let gradient, gradient_back = gradients in    
 
     (* init new or continue previous state of optimisation process *)
     let state = match state with
@@ -614,7 +619,10 @@ module Make
           Checkpoint.(state.gs <- gradient);
           Checkpoint.(state.ps <- Owl_utils.aarr_map Maths.neg gradient);
           Checkpoint.(state.us <- Owl_utils.aarr_map (fun _ -> F 0.) gradient);
-          Checkpoint.(state.ch <- Owl_utils.aarr_map (fun _ -> [|F 0.; F 0.|]) gradient);
+          let _ = match params.learning_rate with
+          | AdaptiveRev _ -> Checkpoint.(state.ch <- Owl_utils.aarr_map (fun _ -> [|F 1.; F 1.|]) gradient)
+          | _ -> Checkpoint.(state.ch <- Owl_utils.aarr_map (fun _ -> [|F 0.; F 0.|]) gradient)
+          in
           Checkpoint.(state.loss.(0) <- loss);
           state
         )
@@ -628,14 +636,43 @@ module Make
     if params.verbosity = true then Checkpoint.print_state_info state;
     (* calculate gradient descent *)
     let ps' = Checkpoint.(Owl_utils.aarr_map4 (grad_fun (fun a -> a)) weights state.gs state.ps gradient) in
-    (* update gcache if necessary *)
-    Checkpoint.(state.ch <- Owl_utils.aarr_map2 upch_fun gradient state.ch);
-    (* adjust direction based on learning_rate *)
-    let us' = Checkpoint.(
-      Owl_utils.aarr_map3 (fun p' g' c ->
-        Maths.(p' * rate_fun state.current_batch g' c)
-      ) ps' gradient state.ch
-    )
+    (* TODO: Refactor Module design to factor in additional steps for AdaptiveRevision *)
+    let us' = match params.learning_rate with
+    | AdaptiveRev _ -> 
+      (* calculate old learning rate *)
+      let old_l = Checkpoint.(
+        Owl_utils.aarr_map2 (fun g' c ->
+          Maths.(rate_fun state.current_batch g' c)
+        ) gradient state.ch
+      ) 
+      in
+      (* update gcache *)
+      Checkpoint.(state.ch <- Owl_utils.aarr_map3 (fun g gb c ->
+        let z = Maths.((c.(0) + (g * g)) + ((F 2. * g) * gb)) in
+        [|z; (max z c.(1))|]
+      ) gradient gradient_back state.ch);
+      (* calculate new learning rate *)
+      let new_l = Checkpoint.(
+        Owl_utils.aarr_map2 (fun g' c ->
+          Maths.(rate_fun state.current_batch g' c)
+        ) gradient state.ch
+      ) in
+      (* adjust direction based on old and new learning_rate *)
+      Checkpoint.(
+        Owl_utils.aarr_map4 (fun p' l l' gb ->
+          Maths.((p' * l) + ((l' - l) * gb))
+        ) ps' new_l old_l gradient_back
+      )
+
+    | _ ->
+      (* update gcache if necessary *)
+      Checkpoint.(state.ch <- Owl_utils.aarr_map2 upch_fun gradient state.ch);
+      (* adjust direction based on learning_rate *)
+      Checkpoint.(
+        Owl_utils.aarr_map3 (fun p' g' c ->
+          Maths.(p' * rate_fun state.current_batch g' c)
+        ) ps' gradient state.ch
+      )
     in
     (* adjust direction based on momentum *)
     let us' = Owl_utils.aarr_map2 momt_fun Checkpoint.(state.us) us' in
@@ -653,10 +690,6 @@ module Make
       Checkpoint.print_summary state;
     (* return the current state *)
     state
-
-
-          
-
 
   (* This function is specifically designed for minimising the weights in a
      neural network of graph structure. In Owl's earlier versions, the functions
