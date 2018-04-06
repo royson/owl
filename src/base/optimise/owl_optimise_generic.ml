@@ -648,8 +648,8 @@ module Make
       in
       (* update gcache *)
       Checkpoint.(state.ch <- Owl_utils.aarr_map3 (fun g gb c ->
-        let z = Maths.((c.(0) + (g * g)) + ((F 2. * g) * gb)) in
-        [|z; (max z c.(1))|]
+        let z = Maths.((c.(0) + (g * g)) + (F 2. * g * gb)) in
+        [|z; max z c.(1)|]
       ) gradient gradient_back state.ch);
       (* calculate new learning rate *)
       let new_l = Checkpoint.(
