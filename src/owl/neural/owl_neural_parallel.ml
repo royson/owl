@@ -32,7 +32,7 @@ module type EngineSig = sig
 
   val register_schedule : ('a list -> ('a * ('b * 'c) list) list) -> unit
 
-  val register_pull : (('a * ('b * 'd)) list -> ('a * 'c) list) -> unit
+  val register_pull : (string -> ('a * ('b * 'd)) list -> ('a * 'c) list) -> unit
 
   val register_push : ('a -> ('b * 'c) list -> (('b * ('c * 'e)) list * 'd)) -> unit
 
@@ -98,6 +98,13 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     let par1 = M.mkpar model1 in
     let delta = Owl_utils.aarr_map2 (fun a0 a1 -> Maths.(a0 - a1)) par0 par1 in
     M.update model0 delta
+
+  let write_float_to_file filename l =
+    let open Printf in
+    let file = filename in
+    let oc = open_out_gen [Open_creat; Open_text; Open_append] 0o640 file in
+    fprintf oc "%.6f," l;
+    close_out oc
 
   (* Plot the loss function per update *)
   let plot_loss losses =
@@ -195,6 +202,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     (* get model, if none then init locally *)
     let model = local_model task in
     let tasks = List.map (fun x ->
+      E.set (x ^ "time") (Unix.gettimeofday ());
       (x, [(task.id, model)])
     ) workers
     in
@@ -211,13 +219,16 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     unpack_flt loss 
  *)
 
-  let pull task vars =
+  let pull task address vars =
     let n = E.worker_num () |> float_of_int in
     assert (n >= 1.); (* at least one worker *)
     (* Owl_log.warn "PULL!"; *)
     (* there should be only one item in list *)
     List.map (fun (k, v) ->
       let model1, loss = v in
+      let schedule_time = E.get (address ^ "time") |> fst in
+      let response_time = (Unix.gettimeofday () -. schedule_time) in
+      write_float_to_file "respond.txt" response_time;
       let model0 = local_model task in
       let par0 = M.mkpar model0 in
       let par1 = M.mkpar model1 in
@@ -236,7 +247,9 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       task.loss <- loss :: task.loss;
       task.time <- t :: task.time;
       (* plot_loss task.loss; *) (* Plot Loss * Update *)
-      plot_loss_time task.loss task.time; (* Plot Loss * Time *)
+      (* plot_loss_time task.loss task.time; *) (* Plot Loss * Time *)
+      write_float_to_file "loss.txt" loss;
+      write_float_to_file "time.txt" t;
       (k, model0)
     ) vars
 
@@ -244,6 +257,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
   let push task id vars =
     (* there should be only one item in list *)
     let updates = List.map (fun (k, model) ->
+      let start_t = Unix.gettimeofday () in
       task.model <- M.copy model;
       (* start local training *)
       let params = task.params in
@@ -267,7 +281,8 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       
       (* only send out delta model *)
       delta_model model task.model;
-
+      write_float_to_file "computation.txt" (Unix.gettimeofday () -. start_t);
+      
       (k, (M.copy model, loss))      
        ) vars in
       match task.state with
