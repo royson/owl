@@ -31,13 +31,11 @@ module type EngineSig = sig
 
   val register_schedule : ('a list -> ('a * ('b * 'c) list) list) -> unit
 
-  val register_pull : (('a * ('b * 'c * 'e)) list -> ('a * 'd) list) -> unit
+  val register_pull : (string -> ('a * ('b * 'c)) list -> ('a * 'd) list) -> unit
 
-  val register_push : ('a -> ('b * 'c) list -> ('b * ('d * 'e * 'f)) list) -> unit
+  val register_push : ('a -> ('b * 'c) list -> ('b * ('d * 'e)) list) -> unit
 
   val register_stop : (param_context ref -> bool) -> unit
-
-  val get_address : unit -> string
 
 end
 
@@ -77,12 +75,12 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     mutable state     : Checkpoint.state option;
     mutable params    : Params.typ;
     mutable model     : M.network;
-    mutable data_x    : t;
+    mutable data_x    : t;          
     mutable data_y    : t;
-    mutable loss      : float list; (* For graph plot *)
+    mutable loss      : float list; (* Losses received *)
     mutable start_at  : float;      (* Time training starts *)
-    mutable time      : float list; (* For graph plot *)
-    mutable total_gs  : t array array (* Total gradient for AdaptiveRevision*)
+    mutable time      : float list; (* Total time executed by task *)
+    mutable total_gs  : t array array (* Total gradient for AdaptiveRevision *)
   }
 
 
@@ -98,47 +96,9 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     time = [];
     total_gs = Owl_utils.aarr_map (fun _ -> F 0.) (M.mkpar model);
   }
-
-  (* Plot the loss function per update *)
-  let plot_loss losses =
-    let open Owl_plot in
-    (* Might replace List with an Array with a length counter instead *)
-    let losses = List.rev losses in
-    
-    (* Debug. Print losses. *)
-    (* List.map (Owl_log.info "Loss: %.6f") losses; *)
-
-    (* Bug: Currently crashes on Ubuntu 16.04. Writing to file instead.*)
-    (* let h = create ("Distributed MNist MLP Adam 0.01 2W.png") in
-    let f x = (int_of_float (x -. 1.)) |> (List.nth losses) in
-    let x_range = float_of_int ((List.length losses)) in
-    let y_range l = List.fold_left Pervasives.max (List.hd l) l |> Pervasives.(+.) in
-    Owl_log.debug "Plotting loss function.. ";
-    set_foreground_color h 0 0 0;
-    set_background_color h 255 255 255;
-    set_title h ("Distributed MNist MLP Adam 0.01 (2W)");
-    set_xrange h 0. (x_range +. 10.);
-    set_yrange h 0. (y_range losses 2.0);
-    set_xlabel h "Updates";
-    set_ylabel h "Loss";
-    set_font_size h 8.;
-    set_pen_size h 3.;
-
-    plot_fun ~h f 1. x_range;
-    
-    output h;; *)
-    
-    let open Printf in
-    let file = "loss.txt" in
-    (* Write losses to file to print graph separately*)
-    let oc = open_out file in 
-    fprintf oc "[";
-    List.iter (fprintf oc "%.6f;") losses;
-    fprintf oc "]";      
-    close_out oc                
-
+            
   (* Plot the loss function per time *)
-  let plot_loss_time losses time =
+  let plot_loss_time id losses time =
     let open Owl_plot in
     (* Might replace List with an Array with a length counter instead *)
     let losses = List.rev losses in
@@ -171,13 +131,19 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     (* Write losses to file to print graph separately*)
     let oc = open_out file in 
     fprintf oc "[";
-    List.iter (fprintf oc "%.6f;") losses;
+    List.iter (fprintf oc "%.6f,") losses;
     fprintf oc "]\n";     
     fprintf oc "[";
-    List.iter (fprintf oc "%.6f;") time;
-    fprintf oc "]";
+    List.iter (fprintf oc "%.6f,") time;
+    fprintf oc "]\n";
     close_out oc
 
+  let write_float_to_file filename l =
+    let open Printf in
+    let file = filename in
+    let oc = open_out_gen [Open_creat; Open_text; Open_append] 0o640 file in
+    fprintf oc "%.6f," l;
+    close_out oc  
                    
 
   (* retrieve local model at parameter server, init if none *)
@@ -192,7 +158,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
 
   let exit_condition task_id =
     try E.get (string_of_int task_id ^ "finish") |> fst
-  with Not_found -> false
+    with Not_found -> false
 
 
 
@@ -205,6 +171,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       let _ = match params.learning_rate with 
       | AdaptiveRev _ -> E.set (x ^ "gradient") task.total_gs
       | _             -> () in
+      E.set (x ^ "time") (Unix.gettimeofday ());
       (x, [(task.id, model)])
     ) workers
     in
@@ -221,13 +188,15 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     unpack_flt loss 
  *)
 
-  let pull task vars =
+  let pull task address vars =
     let n = E.worker_num () |> float_of_int in
     assert (n >= 1.); (* at least one worker *)
-    (* Owl_log.warn "PULL!"; *)
     (* there should be only one item in list *)
     List.map (fun (k, v) ->
-      let gradient, loss, address = v in
+      let gradient, loss = v in
+      let schedule_time = E.get (address ^ "time") |> fst in
+      let response_time = (Unix.gettimeofday () -. schedule_time) in
+      write_float_to_file "respond.txt" response_time;
       let params = task.params in
       let x = task.data_x in
       let model = local_model task in
@@ -261,10 +230,13 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       let loss = calc_loss (M.copy task.model) params x y in
        *)
       let t = Unix.gettimeofday () -. task.start_at in
-      task.loss <- (unpack_flt loss) :: task.loss;
+      let loss' = unpack_flt loss in
+      task.loss <- loss' :: task.loss;
       task.time <- t :: task.time;
-      (* plot_loss task.loss; *) (* Plot Loss * Update *)
-      plot_loss_time task.loss task.time; (* Plot Loss * Time *)
+      write_float_to_file "loss.txt" loss';
+      write_float_to_file "time.txt" t;
+      (* plot_loss_time task.loss task.time; *) (* Plot Loss * Time *)
+
       (k, model)
     ) vars
 
@@ -272,12 +244,14 @@ module Make (M : ModelSig) (E : EngineSig) = struct
   let push task id vars =
     (* there should be only one item in list *)
     List.map (fun (k, model) ->
+      let start_t = Unix.gettimeofday () in
       (* start local training *)
       let params = task.params in
       let x = task.data_x in
       let y = task.data_y in
       let grad, loss = M.(calculate_gradient ~params ~init_model:false model x y) in
-      let result = (grad, loss, E.get_address ()) in
+      let result = (grad, loss) in
+      write_float_to_file "computation.txt" (Unix.gettimeofday () -. start_t);
       (k, result)      
        ) vars 
 
@@ -292,6 +266,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       | None   -> Params.default ()
     in
     let id = Owl_stats.uniform_int_rvs ~a:0 ~b:max_int in
+
     let task = make_task id params nn x y in
     (* register sched/push/pull/stop/barrier *)
     E.register_schedule (schedule task);
