@@ -83,12 +83,9 @@ let train () =
       let z = Array.map unpack_flt state.loss in
       let c = Array.sub z 0 state.batches in 
       let open Printf in
-      let file = "loss.txt" in
       (* Write losses to file to print graph separately*)
-      let oc = open_out file in 
-      fprintf oc "[";
-      List.iter (fprintf oc "%.6f;") (Array.to_list c);
-      fprintf oc "]\n";     
+      let oc = open_out_gen [Open_append; Open_creat] 0o666 "loss.txt" in 
+      fprintf oc "%.6f;" (c.((Array.length c) - 1));
       close_out oc;
       let oc = open_out_gen [Open_append; Open_creat] 0o666 "time.txt" in
       fprintf oc "%.6f;" (Unix.gettimeofday () -. state.start_at);
@@ -101,7 +98,7 @@ let train () =
   (* plug in chkpt into params *)
   let params = Params.config
     ~batch:(Batch.Stochastic) ~learning_rate:(Learning_Rate.Adagrad 0.001)
-    ~checkpoint:(Checkpoint.Custom chkpt) ~stopping:(Stopping.Const 1e-6) 5.0
+    ~checkpoint:(Checkpoint.Custom chkpt) ~stopping:(Stopping.Const 1e-6) 0.01
   in
   (* keep restarting the optimisation until it finishes *)
   let state = Graph.train ~params network x y in
@@ -113,4 +110,21 @@ let train () =
   network
 
 
-let _ = train ()
+let test network =
+  let imgs, _, labels = Dataset.load_cifar_test_data () in
+  let m = Dense.Matrix.S.row_num labels in
+  let imgs = Dense.Ndarray.S.reshape imgs [|m;32;32;3|] in
+
+  let mat2num x = Dense.Matrix.S.of_array (
+      x |> Dense.Matrix.Generic.max_rows
+        |> Array.map (fun (_,_,num) -> float_of_int num)
+    ) 1 m
+  in
+  
+  let pred = mat2num (Graph.model network imgs) in
+  let fact = mat2num labels in
+  let accu = Dense.Matrix.S.(elt_equal pred fact |> sum') in
+  Owl_log.info "Accuracy on test set: %f" (accu /. (float_of_int m))
+
+
+let _ = train () |> test
