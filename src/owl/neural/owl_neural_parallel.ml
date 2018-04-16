@@ -264,7 +264,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       let x = task.data_x in
       let y = task.data_y in
       let state = match task.state with
-        | Some state -> if state.batches <> (state.current_batch - 1) then
+        | Some state -> if state.batches <> (state.current_batch) then
                           M.(train_generic ~state ~params ~init_model:false model x y)
                         else
                           state
@@ -287,7 +287,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
        ) vars in
       match task.state with
         | Some state -> 
-            if state.batches = (state.current_batch - 1) then
+            if state.batches = (state.current_batch) then
               (updates, true)
             else
               (updates, false)
