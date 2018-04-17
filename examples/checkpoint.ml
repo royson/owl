@@ -32,9 +32,9 @@ let make_network input_shape =
   |> linear 256 ~act_typ:Activation.Tanh
   |> linear 128 ~act_typ:Activation.Relu
   |> linear 10 ~act_typ:Activation.Softmax
-  |> get_network
- *)
-  |> normalisation ~decay:0.9
+  |> get_network *)
+
+(*   |> normalisation ~decay:0.9
   |> conv2d [|3;3;3;32|] [|1;1|] ~act_typ:Activation.Relu
   |> conv2d [|3;3;32;32|] [|1;1|] ~act_typ:Activation.Relu ~padding:VALID
   |> max_pool2d [|2;2|] [|2;2|] ~padding:VALID
@@ -45,7 +45,7 @@ let make_network input_shape =
   |> dropout 0.1
   |> fully_connected 512 ~act_typ:Activation.Relu
   |> linear 10 ~act_typ:Activation.Softmax
-  |> get_network
+  |> get_network *)
 
 let train () =
   (* let x, _, y = Dataset.load_mnist_train_data_arr () in *)
@@ -81,14 +81,14 @@ let train () =
 
       Plot.output h; *)
       let z = Array.map unpack_flt state.loss in
-      let c = Array.sub z 0 state.batches in 
+      let c = Array.sub z 0 state.current_batch in 
       let open Printf in
       (* Write losses to file to print graph separately*)
-      let oc = open_out_gen [Open_append; Open_creat] 0o666 "loss.txt" in 
-      fprintf oc "%.6f;" (c.((Array.length c) - 1));
+      let oc = open_out_gen [Open_append; Open_creat] 0o666 "loss.txt" in
+      fprintf oc "%.6f," (c.((Array.length c) - 1));
       close_out oc;
       let oc = open_out_gen [Open_append; Open_creat] 0o666 "time.txt" in
-      fprintf oc "%.6f;" (Unix.gettimeofday () -. state.start_at);
+      fprintf oc "%.6f," (Unix.gettimeofday () -. state.start_at);
       close_out oc;
 
       state.stop <- true;
@@ -97,8 +97,8 @@ let train () =
 
   (* plug in chkpt into params *)
   let params = Params.config
-    ~batch:(Batch.Stochastic) ~learning_rate:(Learning_Rate.Adagrad 0.001)
-    ~checkpoint:(Checkpoint.Custom chkpt) ~stopping:(Stopping.Const 1e-6) 0.01
+    ~batch:(Batch.Sample 100) ~learning_rate:(Learning_Rate.Adagrad 0.001)
+    ~checkpoint:(Checkpoint.Custom chkpt) ~stopping:(Stopping.Const 1e-6) 50.0
   in
   (* keep restarting the optimisation until it finishes *)
   let state = Graph.train ~params network x y in

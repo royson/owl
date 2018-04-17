@@ -61,7 +61,7 @@ module type ModelSig = sig
   val calculate_gradient : ?params:Params.typ -> ?init_model:bool -> network -> t -> t -> t array array * t
 
   val update_network : ?state:Checkpoint.state -> ?params:Params.typ -> ?init_model:bool -> network 
-                      -> (t array array * t array array) -> t -> t -> Checkpoint.state
+                      -> (t array array * t array array) -> int -> t -> t -> Checkpoint.state
 
 end
 
@@ -71,16 +71,16 @@ end
 module Make (M : ModelSig) (E : EngineSig) = struct
 
   type task = {
-    mutable id        : int;
-    mutable state     : Checkpoint.state option;
-    mutable params    : Params.typ;
-    mutable model     : M.network;
-    mutable data_x    : t;          
-    mutable data_y    : t;
-    mutable loss      : float list; (* Losses received *)
-    mutable start_at  : float;      (* Time training starts *)
-    mutable time      : float list; (* Total time executed by task *)
-    mutable total_gs  : t array array (* Total gradient for AdaptiveRevision *)
+    mutable id          : int;
+    mutable state       : Checkpoint.state option;
+    mutable params      : Params.typ;
+    mutable model       : M.network;
+    mutable data_x      : t;          
+    mutable data_y      : t;
+    mutable loss        : float list; (* Losses received *)
+    mutable start_at    : float;      (* Time training starts *)
+    mutable time        : float list; (* Total time executed by task *)
+    mutable total_gs    : t array array; (* Total gradient for AdaptiveRevision *) 
   }
 
 
@@ -156,20 +156,31 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       E.get task.id |> fst;
     )
 
+  (* retrieve the number of update iterations at parameter server *)
+  let local_iteration task =
+    let k = (string_of_int task.id ^ "iter") in
+    try E.get k |> fst
+    with Not_found -> (
+      E.set k 0;
+      E.get k |> fst;
+    )
+
+
   let exit_condition task_id =
     try E.get (string_of_int task_id ^ "finish") |> fst
     with Not_found -> false
-
-
 
   let schedule task workers =
     let params = task.params in
     (* get model, if none then init locally *)
     let model = local_model task in
-    (* If AdaptiveRevision, record total gradient for worker before schedule *)
+    (* If AdaptiveRevision, record total gradient for worker before schedule.
+       If AdaDelay, record current iteration *)
     let tasks = List.map (fun x ->
       let _ = match params.learning_rate with 
       | AdaptiveRev _ -> E.set (x ^ "gradient") task.total_gs
+      | AdaDelay _    -> let iter = local_iteration task in
+                         E.set (x ^ "iter") iter;
       | _             -> () in
       E.set (x ^ "time") (Unix.gettimeofday ());
       (x, [(task.id, model)])
@@ -200,6 +211,17 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       let params = task.params in
       let x = task.data_x in
       let model = local_model task in
+
+      (* Calculate delay for revised learning rate *)
+      let delay = match params.learning_rate with
+      | AdaDelay _ -> let iter = local_iteration task in
+                      let prev_iter = E.get (address ^ "iter") |> fst in
+                      let d = iter - prev_iter in
+                      E.set (string_of_int task.id ^ "iter") (iter + 1);
+                      d
+      | _          -> 0
+      in
+      
       (* Calculate gradient for revision step *)
       let gradient_back = match params.learning_rate with 
       | AdaptiveRev _ -> let gradient_old = E.get (address ^ "gradient") |> fst in
@@ -208,8 +230,8 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       in
       let gradients = gradient, gradient_back in
       let state = match task.state with
-        | Some state -> M.(update_network ~state ~params ~init_model:false model gradients loss x)
-        | None       -> M.(update_network ~params ~init_model:false model gradients loss x)
+        | Some state -> M.(update_network ~state ~params ~init_model:false model gradients delay loss x)
+        | None       -> M.(update_network ~params ~init_model:false model gradients delay loss x)
       in
       
       task.model <- model;
