@@ -152,6 +152,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
   
   (* TODO: Shape is hard-coded now *)
   let test task =
+    Owl_log.info "Running Test..";
     let open Owl_dense in
     let imgs, labels = unpack_arr task.test_x, unpack_arr task.test_y in
     let m = Matrix.S.row_num labels in
@@ -262,6 +263,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       task.model <- model;
       E.set task.id task.model;
       task.state <- Some state; 
+      E.set (string_of_int task.id ^ "finish") Checkpoint.(state.stop);        
 
       (* Update total gradient in AdaptiveRevision *)
       let _ = match params.learning_rate with 
@@ -284,8 +286,8 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       (* plot_loss_time task.loss task.time; *) (* Plot Loss * Time *)
 
       if Checkpoint.(state.stop) then
-        E.set (string_of_int task.id ^ "finish") true;
         test task;
+        
       (k, model)
     ) vars
 
