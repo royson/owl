@@ -527,7 +527,7 @@ module Make
    *)
 
   (* Returns the gradient and loss after 1 batch *)
-  let calculate_gradient ?params ?(init_model=true) nn x y =
+  let calculate_gradient ?params ?(init_model=true) nn x y t =
     if init_model = true then init nn;
     let f = forward nn in
     let b = backward nn in
@@ -535,7 +535,7 @@ module Make
       | Some p -> p
       | None   -> Optimise.Params.default ()
     in
-    let gs, loss = Optimise.calculate_gradient_worker p f b x y in
+    let gs, loss = Optimise.calculate_gradient_worker p f b x y t in
     gs, loss
 
   (* Returns state of model given gradient and loss *)

@@ -28,7 +28,7 @@ module type EngineSig = sig
 
   val register_barrier : (param_context ref -> int * (string list)) -> unit
 
-  val register_schedule : ('a list -> ('a * ('b * 'c) list) list) -> unit
+  val register_schedule : ('a list -> ('a * ('b * ('c * 'd)) list) list) -> unit
 
   val register_pull : (string -> ('a * ('b * 'c)) list -> ('a * 'd) list) -> unit
 
@@ -59,7 +59,7 @@ module type ModelSig = sig
 
   (* val train_generic : ?state:Checkpoint.state -> ?params:Params.typ -> ?init_model:bool -> network -> t -> t -> Checkpoint.state *)
 
-  val calculate_gradient : ?params:Params.typ -> ?init_model:bool -> network -> t -> t -> t array array * t
+  val calculate_gradient : ?params:Params.typ -> ?init_model:bool -> network -> t -> t -> int -> t array array * t
 
   val update_network : ?state:Checkpoint.state -> ?params:Params.typ -> ?init_model:bool -> network 
                       -> (t array array * t array array) -> int -> t -> t -> Checkpoint.state
@@ -201,16 +201,16 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     let params = task.params in
     (* get model, if none then init locally *)
     let model = local_model task in
+    let iter = local_iteration task in
     (* If AdaptiveRevision, record total gradient for worker before schedule.
        If AdaDelay, record current iteration *)
     let tasks = List.map (fun x ->
       let _ = match params.learning_rate with 
       | AdaptiveRev _ -> E.set (x ^ "gradient") task.total_gs
-      | AdaDelay _    -> let iter = local_iteration task in
-                         E.set (x ^ "iter") iter;
+      | AdaDelay _    -> E.set (x ^ "iter") iter
       | _             -> () in
       E.set (x ^ "time") (Unix.gettimeofday ());
-      (x, [(task.id, model)])
+      (x, [(task.id, (model, iter))])
     ) workers
     in
     tasks
@@ -296,13 +296,14 @@ module Make (M : ModelSig) (E : EngineSig) = struct
 
   let push task id vars =
     (* there should be only one item in list *)
-    List.map (fun (k, model) ->
+    List.map (fun (k, v) ->
+      let model, t = v in
       let start_t = Unix.gettimeofday () in
       (* start local training *)
       let params = task.params in
       let x = task.data_x in
       let y = task.data_y in
-      let grad, loss = M.calculate_gradient ~params ~init_model:false model x y in
+      let grad, loss = M.calculate_gradient ~params ~init_model:false model x y t in
       let result = (grad, loss) in
       write_float_to_file "computation.txt" (Unix.gettimeofday () -. start_t);
       (k, result)      

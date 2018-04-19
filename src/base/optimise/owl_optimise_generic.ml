@@ -569,17 +569,14 @@ module Make
     state, !w
 
   (* This function is designed for parallel workers to calculate the gradient
-     given a neural network and its data.
-     TODO: Data Parallelism:
-     Does not support mini-batch. May assume batch data is assigned in the 
-     future and xt and yt are already provided. Currently loads all x and y. *)
-  let calculate_gradient_worker params forward backward x y =
+     given a neural network and its data. *)
+  let calculate_gradient_worker params forward backward x y t =
     let open Params in
     let bach_fun = Batch.run params.batch in
     let loss_fun = Loss.run params.loss in
     let regl_fun = Regularisation.run params.regularisation in
     let clip_fun = Clipping.run params.clipping in    
-    let xt, yt = bach_fun x y 0 in
+    let xt, yt = bach_fun x y t in
     let yt', ws = forward xt in
     let loss = loss_fun yt yt' in
     (* take the mean of the loss *)
