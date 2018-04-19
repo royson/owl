@@ -285,8 +285,10 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       write_float_to_file "time.txt" t;
       (* plot_loss_time task.loss task.time; *) (* Plot Loss * Time *)
 
+      (* Forgo test because bug #210 *)
+      (* 
       if Checkpoint.(state.stop) then
-        test task;
+        test task; *)
         
       (k, model)
     ) vars
