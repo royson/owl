@@ -221,7 +221,6 @@ module Make (M : ModelSig) (E : EngineSig) = struct
                       d
       | _          -> 0
       in
-      
       (* Calculate gradient for revision step *)
       let gradient_back = match params.learning_rate with 
       | AdaptiveRev _ -> let gradient_old = E.get (address ^ "gradient") |> fst in
