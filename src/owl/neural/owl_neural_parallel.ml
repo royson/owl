@@ -9,7 +9,6 @@
 open Owl_algodiff.S
 open Owl_optimise.S
 
-
 (* module signature of model parallel engine *)
 
 module type EngineSig = sig
@@ -54,6 +53,8 @@ module type ModelSig = sig
 
   val copy : network -> network
 
+  val model : network -> arr -> arr
+
   (* val forward : network -> t -> t * t array array *)
 
   (* val train_generic : ?state:Checkpoint.state -> ?params:Params.typ -> ?init_model:bool -> network -> t -> t -> Checkpoint.state *)
@@ -77,6 +78,8 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     mutable model       : M.network;
     mutable data_x      : t;          
     mutable data_y      : t;
+    mutable test_x      : t;          
+    mutable test_y      : t;
     mutable loss        : float list; (* Losses received *)
     mutable start_at    : float;      (* Time training starts *)
     mutable time        : float list; (* Total time executed by task *)
@@ -84,13 +87,15 @@ module Make (M : ModelSig) (E : EngineSig) = struct
   }
 
 
-  let make_task id params model data_x data_y = {
+  let make_task id params model data_x data_y test_x test_y = {
     id;
     state = None;
     params;
     model;
     data_x;
     data_y;
+    test_x;
+    test_y;
     loss = [];
     start_at = Unix.gettimeofday ();
     time = [];
@@ -144,7 +149,28 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     let oc = open_out_gen [Open_creat; Open_text; Open_append] 0o640 file in
     fprintf oc "%.6f," l;
     close_out oc  
-                   
+  
+  (* TODO: Shape is hard-coded now *)
+  let test task =
+    let open Owl_dense in
+    let imgs, labels = unpack_arr task.test_x, unpack_arr task.test_y in
+    let m = Matrix.S.row_num labels in
+    (* let imgs = Ndarray.S.reshape imgs [|m;32;32;3|] in *)
+    let imgs = Ndarray.S.reshape imgs [|m;28;28;1|] in
+
+    let mat2num x = Matrix.S.of_array (
+        x |> Matrix.Generic.max_rows
+          |> Array.map (fun (_,_,num) -> float_of_int num)
+      ) 1 m
+    in
+    
+    let pred = mat2num (M.model task.model imgs) in
+    let fact = mat2num labels in
+    let accu = Matrix.S.(elt_equal pred fact |> sum') in
+    let res = (accu /. (float_of_int m)) in
+    Owl_log.info "Accuracy on test set: %f" res;
+    write_float_to_file "result.txt" res
+            
 
   (* retrieve local model at parameter server, init if none *)
   let local_model task =
@@ -229,14 +255,13 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       in
       let gradients = gradient, gradient_back in
       let state = match task.state with
-        | Some state -> M.(update_network ~state ~params ~init_model:false model gradients delay loss x)
-        | None       -> M.(update_network ~params ~init_model:false model gradients delay loss x)
+        | Some state -> M.update_network ~state ~params ~init_model:false model gradients delay loss x
+        | None       -> M.update_network ~params ~init_model:false model gradients delay loss x
       in
       
       task.model <- model;
       E.set task.id task.model;
       task.state <- Some state; 
-      E.set (string_of_int task.id ^ "finish") Checkpoint.(state.stop);
 
       (* Update total gradient in AdaptiveRevision *)
       let _ = match params.learning_rate with 
@@ -258,6 +283,9 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       write_float_to_file "time.txt" t;
       (* plot_loss_time task.loss task.time; *) (* Plot Loss * Time *)
 
+      if Checkpoint.(state.stop) then
+        E.set (string_of_int task.id ^ "finish") true;
+        test task;
       (k, model)
     ) vars
 
@@ -270,7 +298,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       let params = task.params in
       let x = task.data_x in
       let y = task.data_y in
-      let grad, loss = M.(calculate_gradient ~params ~init_model:false model x y) in
+      let grad, loss = M.calculate_gradient ~params ~init_model:false model x y in
       let result = (grad, loss) in
       write_float_to_file "computation.txt" (Unix.gettimeofday () -. start_t);
       (k, result)      
@@ -279,8 +307,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
   (* Stop scheduling if model finishes training *)
   let stop task context = exit_condition task.id
 
-
-  let train_generic ?params nn x y jid url =
+  let train_generic ?params nn x y tx ty jid url =
     (* prepare params and make task *)
     let params = match params with
       | Some p -> p
@@ -288,7 +315,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     in
     let id = Owl_stats.uniform_int_rvs ~a:0 ~b:max_int in
 
-    let task = make_task id params nn x y in
+    let task = make_task id params nn x y tx ty in
     (* register sched/push/pull/stop/barrier *)
     E.register_schedule (schedule task);
     E.register_pull (pull task);
@@ -297,7 +324,8 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     E.start ~barrier:E.ASP jid url
 
 
-  let train ?params nn x y jid url = train_generic ?params nn (Arr x) (Arr y) jid url
+  let train ?params nn x y tx ty jid url = train_generic ?params nn (Arr x) (Arr y) 
+                                            (Arr tx) (Arr ty) jid url
 
 
 end
