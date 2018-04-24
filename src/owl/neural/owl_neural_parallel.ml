@@ -156,8 +156,8 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     let open Owl_dense in
     let imgs, labels = unpack_arr task.test_x, unpack_arr task.test_y in
     let m = Matrix.S.row_num labels in
-    (* let imgs = Ndarray.S.reshape imgs [|m;32;32;3|] in *)
-    let imgs = Ndarray.S.reshape imgs [|m;28;28;1|] in
+    let imgs = Ndarray.S.reshape imgs [|m;32;32;3|] in
+    (* let imgs = Ndarray.S.reshape imgs [|m;28;28;1|] in *)
 
     let mat2num x = Matrix.S.of_array (
         x |> Matrix.Generic.max_rows
@@ -284,9 +284,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       write_float_to_file "loss.txt" loss';
       write_float_to_file "time.txt" t;
       (* plot_loss_time task.loss task.time; *) (* Plot Loss * Time *)
-
-      (* Forgo test because bug #210 *)
-      (* 
+(* 
       if Checkpoint.(state.stop) then
         test task; *)
         

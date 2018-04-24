@@ -27,13 +27,13 @@ let make_network input_shape =
     |> linear 10 ~act_typ:Activation.Softmax
     |> get_network *)
     (* MLP *)
-  |> flatten 
+(*   |> flatten 
   |> linear 256 ~act_typ:Activation.Tanh
   |> linear 128 ~act_typ:Activation.Relu
   |> linear 10 ~act_typ:Activation.Softmax
-  |> get_network
+  |> get_network *)
 
-(*   |> normalisation ~decay:0.9
+  |> normalisation ~decay:0.9
   |> conv2d [|3;3;3;32|] [|1;1|] ~act_typ:Activation.Relu
   |> conv2d [|3;3;32;32|] [|1;1|] ~act_typ:Activation.Relu ~padding:VALID
   |> max_pool2d [|2;2|] [|2;2|] ~padding:VALID
@@ -44,13 +44,13 @@ let make_network input_shape =
   |> dropout 0.1
   |> fully_connected 512 ~act_typ:Activation.Relu
   |> linear 10 ~act_typ:Activation.Softmax
-  |> get_network *)
+  |> get_network
 
 let train () =
-  let x, _, y = Dataset.load_mnist_train_data_arr () in
-  (* let x, _, y = Dataset.load_cifar_train_data 1 in *)
-  let network = make_network [|28;28;1|] in
-  (* let network = make_network [|32;32;3|] in *)
+  (* let x, _, y = Dataset.load_mnist_train_data_arr () in *)
+  let x, _, y = Dataset.load_cifar_train_data 1 in
+  (* let network = make_network [|28;28;1|] in *)
+  let network = make_network [|32;32;3|] in
 
   (* define checkpoint function *)
   
@@ -96,8 +96,8 @@ let train () =
 
   (* plug in chkpt into params *)
   let params = Params.config
-    ~batch:(Batch.Sample 100) ~learning_rate:(Learning_Rate.Adagrad 0.001)
-    ~checkpoint:(Checkpoint.Custom chkpt) ~stopping:(Stopping.Const 1e-6) 1.0
+    ~batch:(Batch.Mini 128) ~learning_rate:(Learning_Rate.Adagrad 0.001)
+    ~checkpoint:(Checkpoint.Custom chkpt) ~stopping:(Stopping.Const 1e-6) 0.1
   in
   (* keep restarting the optimisation until it finishes *)
   let state = Graph.train ~params network x y in
@@ -110,11 +110,11 @@ let train () =
 
 
 let test network =
-  (* let imgs, _, labels = Dataset.load_cifar_test_data () in *)
-  let imgs, _, labels = Dataset.load_mnist_test_data () in
+  let imgs, _, labels = Dataset.load_cifar_test_data () in
+  (* let imgs, _, labels = Dataset.load_mnist_test_data () in *)
   let m = Dense.Matrix.S.row_num labels in
-  (* let imgs = Dense.Ndarray.S.reshape imgs [|m;32;32;3|] in *)
-  let imgs = Dense.Ndarray.S.reshape imgs [|m;28;28;1|] in
+  let imgs = Dense.Ndarray.S.reshape imgs [|m;32;32;3|] in
+  (* let imgs = Dense.Ndarray.S.reshape imgs [|m;28;28;1|] in *)
 
   let mat2num x = Dense.Matrix.S.of_array (
       x |> Dense.Matrix.Generic.max_rows
