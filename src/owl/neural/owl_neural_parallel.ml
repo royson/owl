@@ -238,16 +238,15 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       let params = task.params in
       let x = task.data_x in
       let model = local_model task in
-
+      let iter = local_iteration task in
       (* Calculate delay for revised learning rate *)
       let delay = match params.learning_rate with
-      | AdaDelay _ -> let iter = local_iteration task in
-                      let prev_iter = E.get (address ^ "iter") |> fst in
-                      let d = iter - prev_iter in
-                      E.set (string_of_int task.id ^ "iter") (iter + 1);
-                      d
+      | AdaDelay _ -> let prev_iter = E.get (address ^ "iter") |> fst in
+                      iter - prev_iter
       | _          -> 0
       in
+      (* Increase iteration step for AdaDelay or Mini-batch *)
+      E.set (string_of_int task.id ^ "iter") (iter + 1);
       (* Calculate gradient for revision step *)
       let gradient_back = match params.learning_rate with 
       | AdaptiveRev _ -> let gradient_old = E.get (address ^ "gradient") |> fst in
