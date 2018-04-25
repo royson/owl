@@ -111,7 +111,7 @@ let train () =
 (* TODO: Refactor. *)
 let test network =
   let imgs, _, labels = Dataset.load_cifar_test_data () in
-
+  Graph.save network "model";
   let s1 = [ [0;1999] ] in
   let s2 = [ [2000;3999] ] in
   let s3 = [ [4000;5999] ] in

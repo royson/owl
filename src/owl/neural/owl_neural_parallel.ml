@@ -55,6 +55,8 @@ module type ModelSig = sig
 
   val model : network -> arr -> arr
 
+  val save : network -> string -> unit
+
   (* val forward : network -> t -> t * t array array *)
 
   (* val train_generic : ?state:Checkpoint.state -> ?params:Params.typ -> ?init_model:bool -> network -> t -> t -> Checkpoint.state *)
@@ -152,7 +154,8 @@ module Make (M : ModelSig) (E : EngineSig) = struct
 
   (* TODO: Refactor *)
   let test_cifar task =
-    Owl_log.info "Running Test..";
+    Owl_log.info "Saving model to file and running test";
+    M.save task.model "model";
     let open Owl_dense in
     let imgs, labels = unpack_arr task.test_x, unpack_arr task.test_y in
 
