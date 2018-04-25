@@ -175,11 +175,14 @@ module Make (M : ModelSig) (E : EngineSig) = struct
           |> Array.map (fun (_,_,num) -> float_of_int num)
       ) 1 s
     in
-
     let pred1 = mat2num (M.model task.model imgs1) m in
+    Owl_log.info "Calculating.. 20";
     let pred2 = mat2num (M.model task.model imgs2) m in
+    Owl_log.info "Calculating.. 40";
     let pred3 = mat2num (M.model task.model imgs3) m in
+    Owl_log.info "Calculating.. 60";
     let pred4 = mat2num (M.model task.model imgs4) m in
+    Owl_log.info "Calculating.. 80";
     let pred5 = mat2num (M.model task.model imgs5) m in
 
     let pred = Matrix.S.concat_horizontal pred1 pred2 in
