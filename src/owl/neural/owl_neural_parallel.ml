@@ -149,9 +149,53 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     let oc = open_out_gen [Open_creat; Open_text; Open_append] 0o640 file in
     fprintf oc "%.6f," l;
     close_out oc  
-  
-  (* TODO: Shape is hard-coded now *)
-  let test task =
+
+  (* TODO: Refactor *)
+  let test_cifar task =
+    Owl_log.info "Running Test..";
+    let open Owl_dense in
+    let imgs, labels = unpack_arr task.test_x, unpack_arr task.test_y in
+
+    let s1 = [ [0;1999] ] in
+    let s2 = [ [2000;3999] ] in
+    let s3 = [ [4000;5999] ] in
+    let s4 = [ [6000;7999] ] in
+    let s5 = [ [8000;9999] ] in
+    let imgs1 = Ndarray.S.get_slice s1 imgs in
+    let imgs2 = Ndarray.S.get_slice s2 imgs in
+    let imgs3 = Ndarray.S.get_slice s3 imgs in
+    let imgs4 = Ndarray.S.get_slice s4 imgs in
+    let imgs5 = Ndarray.S.get_slice s5 imgs in
+
+    (* Assume all slices same size *)
+    let m = Ndarray.S.nth_dim imgs1 0 in
+
+    let mat2num x s = Matrix.S.of_array (
+        x |> Matrix.Generic.max_rows
+          |> Array.map (fun (_,_,num) -> float_of_int num)
+      ) 1 s
+    in
+
+    let pred1 = mat2num (M.model task.model imgs1) m in
+    let pred2 = mat2num (M.model task.model imgs2) m in
+    let pred3 = mat2num (M.model task.model imgs3) m in
+    let pred4 = mat2num (M.model task.model imgs4) m in
+    let pred5 = mat2num (M.model task.model imgs5) m in
+
+    let pred = Matrix.S.concat_horizontal pred1 pred2 in
+    let pred = Matrix.S.concat_horizontal pred pred3 in
+    let pred = Matrix.S.concat_horizontal pred pred4 in
+    let pred = Matrix.S.concat_horizontal pred pred5 in
+
+    let fact = mat2num labels (m * 5) in
+    let accu = Matrix.S.(elt_equal pred fact |> sum') in
+    let res = (accu /. (float_of_int (m * 5))) in
+    Owl_log.info "Accuracy on test set: %f" res;
+    write_float_to_file "result.txt" res
+ 
+
+  (* TODO: Refactor mnist and cifar into one *)
+  let test_mnist task =
     Owl_log.info "Running Test..";
     let open Owl_dense in
     let imgs, labels = unpack_arr task.test_x, unpack_arr task.test_y in
@@ -283,9 +327,10 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       write_float_to_file "loss.txt" loss';
       write_float_to_file "time.txt" t;
       (* plot_loss_time task.loss task.time; *) (* Plot Loss * Time *)
-(* 
+
       if Checkpoint.(state.stop) then
-        test task; *)
+        (* test_mnist task; *)
+        test_cifar task;
         
       (k, model)
     ) vars

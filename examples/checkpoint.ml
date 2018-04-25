@@ -97,7 +97,7 @@ let train () =
   (* plug in chkpt into params *)
   let params = Params.config
     ~batch:(Batch.Mini 128) ~learning_rate:(Learning_Rate.Adagrad 0.001)
-    ~checkpoint:(Checkpoint.Custom chkpt) ~stopping:(Stopping.Const 1e-6) 0.1
+    ~checkpoint:(Checkpoint.Custom chkpt) ~stopping:(Stopping.Const 1e-6) 50.0
   in
   (* keep restarting the optimisation until it finishes *)
   let state = Graph.train ~params network x y in
@@ -108,24 +108,45 @@ let train () =
 
   network
 
-
+(* TODO: Refactor. *)
 let test network =
   let imgs, _, labels = Dataset.load_cifar_test_data () in
-  (* let imgs, _, labels = Dataset.load_mnist_test_data () in *)
-  let m = Dense.Matrix.S.row_num labels in
-  let imgs = Dense.Ndarray.S.reshape imgs [|m;32;32;3|] in
-  (* let imgs = Dense.Ndarray.S.reshape imgs [|m;28;28;1|] in *)
 
-  let mat2num x = Dense.Matrix.S.of_array (
+  let s1 = [ [0;1999] ] in
+  let s2 = [ [2000;3999] ] in
+  let s3 = [ [4000;5999] ] in
+  let s4 = [ [6000;7999] ] in
+  let s5 = [ [8000;9999] ] in
+  let imgs1 = Dense.Ndarray.S.get_slice s1 imgs in
+  let imgs2 = Dense.Ndarray.S.get_slice s2 imgs in
+  let imgs3 = Dense.Ndarray.S.get_slice s3 imgs in
+  let imgs4 = Dense.Ndarray.S.get_slice s4 imgs in
+  let imgs5 = Dense.Ndarray.S.get_slice s5 imgs in
+
+  (* Assume all slices same size *)
+  let m = Dense.Ndarray.S.nth_dim imgs1 0 in
+
+  let mat2num x s = Dense.Matrix.S.of_array (
       x |> Dense.Matrix.Generic.max_rows
         |> Array.map (fun (_,_,num) -> float_of_int num)
-    ) 1 m
+    ) 1 s
   in
-  
-  let pred = mat2num (Graph.model network imgs) in
-  let fact = mat2num labels in
+
+  let pred1 = mat2num (Graph.model network imgs1) m in
+  let pred2 = mat2num (Graph.model network imgs2) m in
+  let pred3 = mat2num (Graph.model network imgs3) m in
+  let pred4 = mat2num (Graph.model network imgs4) m in
+  let pred5 = mat2num (Graph.model network imgs5) m in
+
+  let pred = Dense.Matrix.S.concat_horizontal pred1 pred2 in
+  let pred = Dense.Matrix.S.concat_horizontal pred pred3 in
+  let pred = Dense.Matrix.S.concat_horizontal pred pred4 in
+  let pred = Dense.Matrix.S.concat_horizontal pred pred5 in
+
+  let fact = mat2num labels (m * 5) in
   let accu = Dense.Matrix.S.(elt_equal pred fact |> sum') in
-  Owl_log.info "Accuracy on test set: %f" (accu /. (float_of_int m))
+  let res = (accu /. (float_of_int (m * 5))) in
+  Owl_log.info "Accuracy on test set: %f" res;;
 
 
 let _ = train () |> test
