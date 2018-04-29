@@ -85,7 +85,6 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     mutable loss        : float list; (* Losses received *)
     mutable start_at    : float;      (* Time training starts *)
     mutable time        : float list; (* Total time executed by task *)
-    mutable total_gs    : t array array; (* Total gradient for AdaptiveRevision *) 
   }
 
 
@@ -101,7 +100,6 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     loss = [];
     start_at = Unix.gettimeofday ();
     time = [];
-    total_gs = Owl_utils.aarr_map (fun _ -> F 0.) (M.mkpar model);
   }
             
   (* Plot the loss function per time *)
@@ -242,6 +240,15 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       E.get k |> fst;
     )
 
+  (* retrieve the total gradient for Adaptive Revision *)
+  let total_gradient task =
+    let k = (string_of_int task.id ^ "total_grad") in
+    try E.get k |> fst
+    with Not_found -> (
+      E.set k (Owl_utils.aarr_map (fun _ -> F 0.) (M.mkpar task.model));
+      E.get k |> fst;
+    )
+
 
   let exit_condition task_id =
     try E.get (string_of_int task_id ^ "finish") |> fst
@@ -256,9 +263,11 @@ module Make (M : ModelSig) (E : EngineSig) = struct
        If AdaDelay, record current iteration *)
     let tasks = List.map (fun x ->
       let _ = match params.learning_rate with 
-      | AdaptiveRev _ -> E.set (x ^ "gradient") task.total_gs
-      | AdaDelay _    -> E.set (x ^ "iter") iter
-      | _             -> () in
+      | AdaptiveRev _     -> let total_gs = total_gradient task in
+                             E.set (x ^ "gradient") total_gs
+      | AdaDelay _        -> E.set (x ^ "iter") iter
+      (* | DelayCompensation -> E.set (x ^ "model") model *)
+      | _                 -> () in
       E.set (x ^ "time") (Unix.gettimeofday ());
       (x, [(task.id, (model, iter))])
     ) workers
@@ -300,7 +309,8 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       (* Calculate gradient for revision step *)
       let gradient_back = match params.learning_rate with 
       | AdaptiveRev _ -> let gradient_old = E.get (address ^ "gradient") |> fst in
-                              Owl_utils.aarr_map2 (fun w u -> Maths.(w - u)) task.total_gs gradient_old
+                         let total_gs = total_gradient task in
+                         Owl_utils.aarr_map2 (fun w u -> Maths.(w - u)) total_gs gradient_old
       | _             -> Owl_utils.aarr_map (fun _ -> F 0.) gradient
       in
       let gradients = gradient, gradient_back in
@@ -316,7 +326,9 @@ module Make (M : ModelSig) (E : EngineSig) = struct
 
       (* Update total gradient in AdaptiveRevision *)
       let _ = match params.learning_rate with 
-      | AdaptiveRev _ -> task.total_gs <- Owl_utils.aarr_map2 (fun w u -> Maths.(w + u)) task.total_gs gradient
+      | AdaptiveRev _ -> let total_gs = total_gradient task in
+                         E.set (string_of_int task.id ^ "total_grad") 
+                         (Owl_utils.aarr_map2 (fun w u -> Maths.(w + u)) total_gs gradient)
       | _             -> () 
       in
       
