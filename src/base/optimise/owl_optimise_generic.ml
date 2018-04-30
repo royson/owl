@@ -69,21 +69,23 @@ module Make
       | Schedule     of float array
       | AdaptiveRev  of float (* Distributed training only *)
       | AdaDelay     of float (* Distributed training only *)
+      (* | DelayComp    of float * float * float (* Distributed training only *) *)
 
     let run = function
-      | Adagrad a        -> fun _ _ c -> Maths.(F a / sqrt (c.(0) + F 1e-32))
-      | Const a          -> fun _ _ _ -> F a
-      | Decay (a, k)     -> fun i _ _ -> Maths.(F a / (F 1. + F k * (F (float_of_int i))))
-      | Exp_decay (a, k) -> fun i _ _ -> Maths.(F a * exp (neg (F k) * (F (float_of_int i))))
-      | RMSprop (a, _)   -> fun _ _ c -> Maths.(F a / sqrt (c.(0) + F 1e-32))
-      | Adam (a, b1, b2) -> fun i g c -> Maths.(F a *
+      | Adagrad a           -> fun _ _ c -> Maths.(F a / sqrt (c.(0) + F 1e-32))
+      | Const a             -> fun _ _ _ -> F a
+      | Decay (a, k)        -> fun i _ _ -> Maths.(F a / (F 1. + F k * (F (float_of_int i))))
+      | Exp_decay (a, k)    -> fun i _ _ -> Maths.(F a * exp (neg (F k) * (F (float_of_int i))))
+      | RMSprop (a, _)      -> fun _ _ c -> Maths.(F a / sqrt (c.(0) + F 1e-32))
+      | Adam (a, b1, b2)    -> fun i g c -> Maths.(F a *
           (sqrt (F 1. - F b2 ** F (float_of_int i))) /
           (F 1. - F b1 ** F (float_of_int i)) *
           c.(0) / (sqrt c.(1) + F 1e-8) /
           (g + F 1e-32))
-      | Schedule a       -> fun i _ _ -> F a.(i mod (Array.length a))
-      | AdaptiveRev a    -> fun _ _ c -> Maths.(F a / sqrt (c.(1) + F 1e-32))
-      | AdaDelay a       -> fun i _ c -> Maths.(sqrt (c.(0) / (F (float_of_int i)))) 
+      | Schedule a          -> fun i _ _ -> F a.(i mod (Array.length a))
+      | AdaptiveRev a       -> fun _ _ c -> Maths.(F a / sqrt (c.(1) + F 1e-32))
+      | AdaDelay a          -> fun i _ c -> Maths.(sqrt (c.(0) / (F (float_of_int i)))) 
+      (* | DelayComp (a, v, m) -> fun _ _ c -> (*TODO*) *)
 
     let default = function
       | Adagrad _     -> Adagrad 0.01
@@ -95,6 +97,7 @@ module Make
       | Schedule _    -> Schedule [|0.001|]
       | AdaptiveRev _ -> AdaptiveRev 0.01
       | AdaDelay _    -> AdaDelay 0.01
+      (* | DelayComp _   -> DelayComp (0.5, 2, 0.95) *)
 
     let update_ch typ g c = match typ with
       | Adagrad _        -> [|Maths.(c.(0) + g * g); c.(1)|]
@@ -106,15 +109,16 @@ module Make
       | _                -> c
 
     let to_string = function
-      | Adagrad a        -> Printf.sprintf "adagrad %g" a
-      | Const a          -> Printf.sprintf "constant %g" a
-      | Decay (a, k)     -> Printf.sprintf "decay (%g, %g)" a k
-      | Exp_decay (a, k) -> Printf.sprintf "exp_decay (%g, %g)" a k
-      | RMSprop (a, k)   -> Printf.sprintf "rmsprop (%g, %g)" a k
-      | Adam (a, b1, b2) -> Printf.sprintf "adam (%g, %g, %g)" a b1 b2
-      | Schedule a       -> Printf.sprintf "schedule %i" (Array.length a)
-      | AdaptiveRev a    -> Printf.sprintf "adaptive_revision %g" a
-      | AdaDelay a       -> Printf.sprintf "adadelay %g" a
+      | Adagrad a          -> Printf.sprintf "adagrad %g" a
+      | Const a            -> Printf.sprintf "constant %g" a
+      | Decay (a, k)       -> Printf.sprintf "decay (%g, %g)" a k
+      | Exp_decay (a, k)   -> Printf.sprintf "exp_decay (%g, %g)" a k
+      | RMSprop (a, k)     -> Printf.sprintf "rmsprop (%g, %g)" a k
+      | Adam (a, b1, b2)   -> Printf.sprintf "adam (%g, %g, %g)" a b1 b2
+      | Schedule a         -> Printf.sprintf "schedule %i" (Array.length a)
+      | AdaptiveRev a      -> Printf.sprintf "adaptive_revision %g" a
+      | AdaDelay a         -> Printf.sprintf "adadelay %g" a
+      (* | DelayComp (a, v, m)-> Printf.sprintf "delay_compensation (%g, %g, %g)" a v m *)
 
   end
 
@@ -669,11 +673,11 @@ module Make
       (* update gcache *)
       Checkpoint.(state.ch <- Owl_utils.aarr_map2 (fun g c ->
         let i = F (float_of_int state.current_batch) in
-        let z = Maths.((i / (i + (F (float_of_int delay)))) * (c.(0) + (g * g))) in
+        let z = Maths.(c.(0) + ((i / (i + (F (float_of_int delay)))) * (g * g))) in
         [|z; c.(1)|]
       ) gradient state.ch);
 
-      (* calculate delayed learning rate *)
+      (* calculate delayed learning rate. c_j *)
       let delay_l = Checkpoint.(
         Owl_utils.aarr_map2 (fun g' c ->
           Maths.(rate_fun state.current_batch g' c)
@@ -683,8 +687,11 @@ module Make
       (* take smaller/larger steps depending on delay *)
       let mod_l = Checkpoint.(
         Owl_utils.aarr_map (fun dl ->
-          Maths.(F a / ( (dl * sqrt ((F (float_of_int state.current_batch)) + (F (float_of_int delay))))
-                          + F 1e-32))
+          Maths.(F a / 
+                ((dl * sqrt ((F (float_of_int state.current_batch)) 
+                + (F (float_of_int delay)))) 
+                + F 1e-32)
+                )
         ) delay_l
       ) in
 

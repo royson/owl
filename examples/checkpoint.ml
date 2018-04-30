@@ -97,7 +97,7 @@ let train () =
   (* plug in chkpt into params *)
   let params = Params.config
     ~batch:(Batch.Mini 128) ~learning_rate:(Learning_Rate.Adagrad 0.001)
-    ~checkpoint:(Checkpoint.Custom chkpt) ~stopping:(Stopping.Const 1e-6) 50.0
+    ~checkpoint:(Checkpoint.Custom chkpt) ~stopping:(Stopping.Const 1e-6) 120.0
   in
   (* keep restarting the optimisation until it finishes *)
   let state = Graph.train ~params network x y in
