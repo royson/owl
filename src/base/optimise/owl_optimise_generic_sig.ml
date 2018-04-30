@@ -48,6 +48,7 @@ along axis 0.
       | Schedule of float array
       | AdaptiveRev of float
       | AdaDelay of float
+      | DelayComp of float * float * float
     (** types of learning rate *)
 
     val run : typ -> int -> t -> t array -> t

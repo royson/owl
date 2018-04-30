@@ -285,7 +285,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       | AdaptiveRev _   -> let total_gs = total_gradient task in
                              E.set (x ^ "gradient") total_gs
       | AdaDelay _      -> E.set (x ^ "iter") iter
-      (* | DelayComp _     -> E.set (x ^ "model") model *)
+      | DelayComp _     -> E.set (x ^ "model") model
       | _                 -> () in
       E.set (x ^ "time") (Unix.gettimeofday ());
       (x, [(task.id, (model, iter))])
@@ -328,11 +328,11 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       (* Calculate gradient for revision step *)
       let gradient_back = match params.learning_rate with 
       | AdaptiveRev _ -> let gradient_old = E.get (address ^ "gradient") |> fst in
-                             let total_gs = total_gradient task in
-                             Owl_utils.aarr_map2 (fun w u -> Maths.(w - u)) total_gs gradient_old
-    (*   | DelayComp _   -> let model_old = E.get (address ^ "model") |> fst in
-                             Owl_utils.aarr_map2 (fun w u -> Maths.(w - u)) model model_old
-     *)  | _                 -> Owl_utils.aarr_map (fun _ -> F 0.) gradient
+                         let total_gs = total_gradient task in
+                         Owl_utils.aarr_map2 (fun w u -> Maths.(w - u)) total_gs gradient_old
+      | DelayComp _   -> let model_old = E.get (address ^ "model") |> fst in
+                         Owl_utils.aarr_map2 (fun w u -> Maths.(w - u)) model model_old
+      | _             -> Owl_utils.aarr_map (fun _ -> F 0.) gradient
       in
       let gradients = gradient, gradient_back in
       let state = match task.state with
