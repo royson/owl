@@ -143,10 +143,29 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     fprintf oc "]\n";
     close_out oc
 
+  let overwrite_file filename l = 
+    let open Printf in
+    if Sys.file_exists filename then
+      let ic = open_in filename in
+      try 
+        let l' = input_line ic in 
+        close_in ic;
+        let oc = open_out filename in
+        let total = l +. (float_of_string l') in 
+        fprintf oc "%.6f" total;
+        close_out oc  
+      with e ->                      
+        close_in_noerr ic;           
+        raise e                      
+    else
+      let oc = open_out filename in 
+      fprintf oc "%.6f" l;
+      close_out oc
+
+
   let write_float_to_file filename l =
     let open Printf in
-    let file = filename in
-    let oc = open_out_gen [Open_creat; Open_text; Open_append] 0o640 file in
+    let oc = open_out_gen [Open_creat; Open_text; Open_append] 0o640 filename in
     fprintf oc "%.6f," l;
     close_out oc  
 
@@ -293,7 +312,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       let gradient, loss = v in
       let schedule_time = E.get (address ^ "time") |> fst in
       let response_time = (Unix.gettimeofday () -. schedule_time) in
-      write_float_to_file "respond.txt" response_time;
+      overwrite_file "respond.txt" response_time;
       let params = task.params in
       let x = task.data_x in
       let model = local_model task in
@@ -365,7 +384,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       let y = task.data_y in
       let grad, loss = M.calculate_gradient ~params ~init_model:false model x y t in
       let result = (grad, loss) in
-      write_float_to_file "computation.txt" (Unix.gettimeofday () -. start_t);
+      overwrite_file "computation.txt" (Unix.gettimeofday () -. start_t);
       (k, result)      
        ) vars 
 
