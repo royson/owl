@@ -285,7 +285,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       | AdaptiveRev _   -> let total_gs = total_gradient task in
                              E.set (x ^ "gradient") total_gs
       | AdaDelay _      -> E.set (x ^ "iter") iter
-      | DelayComp _     -> E.set (x ^ "model") model
+      | DelayComp _     -> E.set (x ^ "model") (M.mkpar model)
       | _                 -> () in
       E.set (x ^ "time") (Unix.gettimeofday ());
       (x, [(task.id, (model, iter))])
@@ -308,6 +308,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     let n = E.worker_num () |> float_of_int in
     assert (n >= 1.); (* at least one worker *)
     (* there should be only one item in list *)
+    Owl_log.info "PULLED!";
     List.map (fun (k, v) ->
       let gradient, loss = v in
       let schedule_time = E.get (address ^ "time") |> fst in
@@ -331,7 +332,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
                          let total_gs = total_gradient task in
                          Owl_utils.aarr_map2 (fun w u -> Maths.(w - u)) total_gs gradient_old
       | DelayComp _   -> let model_old = E.get (address ^ "model") |> fst in
-                         Owl_utils.aarr_map2 (fun w u -> Maths.(w - u)) model model_old
+                         Owl_utils.aarr_map2 (fun w u -> Maths.(w - u)) (M.mkpar model) model_old
       | _             -> Owl_utils.aarr_map (fun _ -> F 0.) gradient
       in
       let gradients = gradient, gradient_back in
