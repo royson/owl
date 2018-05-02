@@ -279,10 +279,10 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     let params = task.params in
     (* get model, if none then init locally *)
     let model = local_model task in
+    let batch_no = task.schedule_no in
     (* If AdaptiveRevision, record total gradient for worker before schedule.
        If AdaDelay, record current iteration *)
-    let tasks = List.map (fun x ->
-      let batch_no = task.schedule_no in
+    let tasks = List.mapi (fun i x ->
       let _ = match params.learning_rate with 
       | AdaptiveRev _   -> let total_gs = total_gradient task in
                            E.set (x ^ "gradient") total_gs
@@ -291,11 +291,11 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       | DelayComp _     -> E.set (x ^ "model") (M.mkpar model)
       | _               -> () in
       E.set (x ^ "time") (Unix.gettimeofday ());
-      task.schedule_no <- batch_no + 1;
-      Owl_log.info "Mini-Batch No: %i" batch_no;
-      (x, [(task.id, (model, batch_no))])
+      Owl_log.info "Mini-Batch No: %i" (batch_no + i);
+      (x, [(task.id, (model, batch_no + i))])
     ) workers
     in
+    task.schedule_no <- batch_no + (List.length tasks);
     tasks
 
 
