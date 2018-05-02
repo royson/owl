@@ -308,7 +308,6 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     let n = E.worker_num () |> float_of_int in
     assert (n >= 1.); (* at least one worker *)
     (* there should be only one item in list *)
-    Owl_log.info "PULLED!";
     List.map (fun (k, v) ->
       let gradient, loss = v in
       let schedule_time = E.get (address ^ "time") |> fst in
