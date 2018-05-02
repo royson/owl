@@ -279,10 +279,10 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     let params = task.params in
     (* get model, if none then init locally *)
     let model = local_model task in
-    let batch_no = task.schedule_no in
     (* If AdaptiveRevision, record total gradient for worker before schedule.
        If AdaDelay, record current iteration *)
     let tasks = List.map (fun x ->
+      let batch_no = task.schedule_no in
       let _ = match params.learning_rate with 
       | AdaptiveRev _   -> let total_gs = total_gradient task in
                            E.set (x ^ "gradient") total_gs
