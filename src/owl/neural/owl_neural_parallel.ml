@@ -291,8 +291,8 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       | DelayComp _     -> E.set (x ^ "model") (M.mkpar model)
       | _               -> () in
       E.set (x ^ "time") (Unix.gettimeofday ());
-      task.schedule <- batch_no + 1;
-      Owl_log.info "Number of Mini-Batch: %i" batch_no;
+      task.schedule_no <- batch_no + 1;
+      Owl_log.info "Mini-Batch No: %i" batch_no;
       (x, [(task.id, (model, batch_no))])
     ) workers
     in
