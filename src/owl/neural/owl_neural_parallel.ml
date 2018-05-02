@@ -85,6 +85,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     mutable loss        : float list; (* Losses received *)
     mutable start_at    : float;      (* Time training starts *)
     mutable time        : float list; (* Total time executed by task *)
+    mutable schedule_no : int;        (* Number of task scheduled. For Mini-Batch *)
   }
 
 
@@ -100,6 +101,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     loss = [];
     start_at = Unix.gettimeofday ();
     time = [];
+    schedule_no = 0;
   }
             
   (* Plot the loss function per time *)
@@ -277,18 +279,21 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     let params = task.params in
     (* get model, if none then init locally *)
     let model = local_model task in
-    let iter = local_iteration task in
+    let batch_no = task.schedule_no in
     (* If AdaptiveRevision, record total gradient for worker before schedule.
        If AdaDelay, record current iteration *)
     let tasks = List.map (fun x ->
       let _ = match params.learning_rate with 
       | AdaptiveRev _   -> let total_gs = total_gradient task in
-                             E.set (x ^ "gradient") total_gs
-      | AdaDelay _      -> E.set (x ^ "iter") iter
+                           E.set (x ^ "gradient") total_gs
+      | AdaDelay _      -> let iter = local_iteration task in
+                           E.set (x ^ "iter") iter
       | DelayComp _     -> E.set (x ^ "model") (M.mkpar model)
-      | _                 -> () in
+      | _               -> () in
       E.set (x ^ "time") (Unix.gettimeofday ());
-      (x, [(task.id, (model, iter))])
+      task.schedule <- batch_no + 1;
+      Owl_log.info "Number of Mini-Batch: %i" batch_no;
+      (x, [(task.id, (model, batch_no))])
     ) workers
     in
     tasks
@@ -316,15 +321,14 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       let params = task.params in
       let x = task.data_x in
       let model = local_model task in
-      let iter = local_iteration task in
       (* Calculate delay for revised learning rate *)
       let delay = match params.learning_rate with
-      | AdaDelay _ -> let prev_iter = E.get (address ^ "iter") |> fst in
+      | AdaDelay _ -> let iter = local_iteration task in
+                      let prev_iter = E.get (address ^ "iter") |> fst in
+                      E.set (string_of_int task.id ^ "iter") (iter + 1);
                       iter - prev_iter
       | _          -> 0
       in
-      (* Increase iteration step for AdaDelay or Mini-batch *)
-      E.set (string_of_int task.id ^ "iter") (iter + 1);
       (* Calculate gradient for revision step *)
       let gradient_back = match params.learning_rate with 
       | AdaptiveRev _ -> let gradient_old = E.get (address ^ "gradient") |> fst in
