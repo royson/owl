@@ -144,6 +144,13 @@ module Make
       | Sample c   -> Utils.sample_num x / c
       | Stochastic -> Utils.sample_num x
 
+    (* Takes in number of data instead for parameter server *)
+    let batches_ps typ x = match typ with
+      | Full       -> 1
+      | Mini c     -> x / c
+      | Sample c   -> x / c
+      | Stochastic -> x
+
     let to_string = function
       | Full       -> Printf.sprintf "%s" "full"
       | Mini c     -> Printf.sprintf "mini of %i" c
@@ -602,7 +609,7 @@ module Make
   (* This function is designed for parallel parameter servers to update the
      network given the gradient and loss from its workers. 
      TODO: Currently do not support custom Checkpoints *)
-  let update_network_server ?state params weights gradients delay loss update save x =
+  let update_network_server ?state params weights gradients delay loss update save x_size =
     let open Params in
     if params.verbosity = true && state = None then
       print_endline (Params.to_string params);
@@ -618,7 +625,7 @@ module Make
     let state = match state with
       | Some state -> state
       | None       -> (
-          let batches_per_epoch = Batch.batches params.batch x in
+          let batches_per_epoch = Batch.batches_ps params.batch x_size in
           let state = Checkpoint.init_state batches_per_epoch params.epochs in
           
           (* variables used for specific gradient method *)

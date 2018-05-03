@@ -64,7 +64,7 @@ module type ModelSig = sig
   val calculate_gradient : ?params:Params.typ -> ?init_model:bool -> network -> t -> t -> int -> t array array * t
 
   val update_network : ?state:Checkpoint.state -> ?params:Params.typ -> ?init_model:bool -> network 
-                      -> (t array array * t array array) -> int -> t -> t -> Checkpoint.state
+                      -> (t array array * t array array) -> int -> t -> int -> Checkpoint.state
 
 end
 
@@ -73,35 +73,49 @@ end
 
 module Make (M : ModelSig) (E : EngineSig) = struct
 
-  type task = {
-    mutable id          : int;
-    mutable state       : Checkpoint.state option;
-    mutable params      : Params.typ;
-    mutable model       : M.network;
-    mutable data_x      : t;          
-    mutable data_y      : t;
-    mutable test_x      : t;          
-    mutable test_y      : t;
-    mutable loss        : float list; (* Losses received *)
-    mutable start_at    : float;      (* Time training starts *)
-    mutable time        : float list; (* Total time executed by task *)
-    mutable schedule_no : int;        (* Number of task scheduled. For Mini-Batch *)
+  type server_task = {
+    mutable sid                : int;
+    mutable state              : Checkpoint.state option;
+    mutable server_params      : Params.typ;
+    mutable model              : M.network;
+    mutable train_size         : int;          (* Training data size for batch calculation *)
+    mutable test_x             : t;          
+    mutable test_y             : t;
+    mutable start_at           : float;      (* Time training starts *)
+    mutable schedule_no        : int;        (* Number of task scheduled. For Mini-Batch *)
+    (* For Graph Plots *)
+    mutable loss               : float list; (* Losses received *)
+    mutable time               : float list; (* Total time executed by task *)
+    
+  }
+
+  type client_task = {
+    mutable cid                : int;
+    mutable client_params      : Params.typ;
+    mutable train_x            : t;          
+    mutable train_y            : t;
   }
 
 
-  let make_task id params model data_x data_y test_x test_y = {
-    id;
+  let make_server_task sid server_params model train_x test_x test_y = {
+    sid;
     state = None;
-    params;
+    server_params;
     model;
-    data_x;
-    data_y;
+    train_size = Arr.(shape train_x).(0);
     test_x;
     test_y;
-    loss = [];
     start_at = Unix.gettimeofday ();
-    time = [];
     schedule_no = 0;
+    loss = [];
+    time = [];
+  }
+
+  let make_client_task cid client_params train_x train_y = {
+    cid;
+    client_params;
+    train_x;
+    train_y;
   }
             
   (* Plot the loss function per time *)
@@ -171,9 +185,9 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     fprintf oc "%.6f," l;
     close_out oc  
 
-  (* TODO: Refactor *)
-  let test_cifar task =
-    Owl_log.info "Saving model to file and running test";
+  (* TODO: Refactor brute-force approach. *)
+  let test_network task =
+    Owl_log.info "Saving model and running test";
     M.save task.model "model";
     let open Owl_dense in
     let imgs, labels = unpack_arr task.test_x, unpack_arr task.test_y in
@@ -217,44 +231,20 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     let res = (accu /. (float_of_int (m * 5))) in
     Owl_log.info "Accuracy on test set: %f" res;
     write_float_to_file "result.txt" res
- 
-
-  (* TODO: Refactor mnist and cifar into one *)
-  let test_mnist task =
-    Owl_log.info "Running Test..";
-    let open Owl_dense in
-    let imgs, labels = unpack_arr task.test_x, unpack_arr task.test_y in
-    let m = Matrix.S.row_num labels in
-    let imgs = Ndarray.S.reshape imgs [|m;32;32;3|] in
-    (* let imgs = Ndarray.S.reshape imgs [|m;28;28;1|] in *)
-
-    let mat2num x = Matrix.S.of_array (
-        x |> Matrix.Generic.max_rows
-          |> Array.map (fun (_,_,num) -> float_of_int num)
-      ) 1 m
-    in
-    
-    let pred = mat2num (M.model task.model imgs) in
-    let fact = mat2num labels in
-    let accu = Matrix.S.(elt_equal pred fact |> sum') in
-    let res = (accu /. (float_of_int m)) in
-    Owl_log.info "Accuracy on test set: %f" res;
-    write_float_to_file "result.txt" res
-            
 
   (* retrieve local model at parameter server, init if none *)
   let local_model task =
-    try E.get task.id |> fst
+    try E.get task.sid |> fst
     with Not_found -> (
       Owl_log.warn "set up first model";
       M.init task.model;
-      E.set task.id task.model;
-      E.get task.id |> fst;
+      E.set task.sid task.model;
+      E.get task.sid |> fst;
     )
 
   (* retrieve the number of update iterations at parameter server *)
   let local_iteration task =
-    let k = (string_of_int task.id ^ "iter") in
+    let k = (string_of_int task.sid ^ "iter") in
     try E.get k |> fst
     with Not_found -> (
       E.set k 0;
@@ -263,7 +253,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
 
   (* retrieve the total gradient for Adaptive Revision *)
   let total_gradient task =
-    let k = (string_of_int task.id ^ "total_grad") in
+    let k = (string_of_int task.sid ^ "total_grad") in
     try E.get k |> fst
     with Not_found -> (
       E.set k (Owl_utils.aarr_map (fun _ -> F 0.) (M.mkpar task.model));
@@ -276,7 +266,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     with Not_found -> false
 
   let schedule task workers =
-    let params = task.params in
+    let params = task.server_params in
     (* get model, if none then init locally *)
     let model = local_model task in
     let batch_no = task.schedule_no in
@@ -291,23 +281,11 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       | DelayComp _     -> E.set (x ^ "model") (M.mkpar model)
       | _               -> () in
       E.set (x ^ "time") (Unix.gettimeofday ());
-      Owl_log.info "Mini-Batch No: %i" (batch_no + i);
-      (x, [(task.id, (model, batch_no + i))])
+      (x, [(task.sid, (model, batch_no + i))])
     ) workers
     in
     task.schedule_no <- batch_no + (List.length tasks);
     tasks
-
-
-(*   let calc_loss model (params:Params.typ) x y =
-    let xt, yt = (Batch.run params.batch) x y 0 in
-    let yt', _ = (M.forward model) xt  in
-    let loss = (Loss.run params.loss) yt yt' in
-    (* take the mean of the loss *)
-    let loss = Maths.(loss / (F (Mat.row_num yt |> float_of_int))) in
-    Owl_log.warn "Current Loss = %.6f." (unpack_flt loss);
-    unpack_flt loss 
- *)
 
   let pull task address vars =
     let n = E.worker_num () |> float_of_int in
@@ -318,14 +296,14 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       let schedule_time = E.get (address ^ "time") |> fst in
       let response_time = (Unix.gettimeofday () -. schedule_time) in
       overwrite_file "respond.txt" response_time;
-      let params = task.params in
-      let x = task.data_x in
+      let params = task.server_params in
+      let xs = task.train_size in
       let model = local_model task in
       (* Calculate delay for revised learning rate *)
       let delay = match params.learning_rate with
       | AdaDelay _ -> let iter = local_iteration task in
                       let prev_iter = E.get (address ^ "iter") |> fst in
-                      E.set (string_of_int task.id ^ "iter") (iter + 1);
+                      E.set (string_of_int task.sid ^ "iter") (iter + 1);
                       iter - prev_iter
       | _          -> 0
       in
@@ -340,41 +318,37 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       in
       let gradients = gradient, gradient_back in
       let state = match task.state with
-        | Some state -> M.update_network ~state ~params ~init_model:false model gradients delay loss x
-        | None       -> M.update_network ~params ~init_model:false model gradients delay loss x
+        | Some state -> M.update_network ~state ~params ~init_model:false model gradients delay loss xs
+        | None       -> M.update_network ~params ~init_model:false model gradients delay loss xs
       in
       
       task.model <- model;
-      E.set task.id task.model;
+      E.set task.sid task.model;
       task.state <- Some state; 
-      E.set (string_of_int task.id ^ "finish") Checkpoint.(state.stop);        
+      E.set (string_of_int task.sid ^ "finish") Checkpoint.(state.stop);        
 
       (* Update total gradient in AdaptiveRevision *)
       let _ = match params.learning_rate with 
       | AdaptiveRev _ -> let total_gs = total_gradient task in
-                         E.set (string_of_int task.id ^ "total_grad") 
+                         E.set (string_of_int task.sid ^ "total_grad") 
                          (Owl_utils.aarr_map2 (fun w u -> Maths.(w + u)) total_gs gradient)
       | _             -> () 
       in
       
-      (* Calculate loss for Model *)
-      (* let params = task.params in
-      let x = task.data_x in
-      let y = task.data_y in
-      let loss = calc_loss (M.copy task.model) params x y in
-       *)
       let t = Unix.gettimeofday () -. task.start_at in
       let loss' = unpack_flt loss in
-      task.loss <- loss' :: task.loss;
-      task.time <- t :: task.time;
+
+      (* Writing loss and time to file for further analysis *)
       write_float_to_file "loss.txt" loss';
       write_float_to_file "time.txt" t;
-      (* plot_loss_time task.loss task.time; *) (* Plot Loss * Time *)
+
+      (* For plotting in real time. Bug in Ubuntu 16.04 Server. *)
+      (* task.loss <- loss' :: task.loss;
+      task.time <- t :: task.time;
+      plot_loss_time task.loss task.time; *) 
 
       if Checkpoint.(state.stop) then
-        (* test_mnist task; *)
-        test_cifar task;
-        
+        test_network task;
       (k, model)
     ) vars
 
@@ -385,9 +359,9 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       let model, t = v in
       let start_t = Unix.gettimeofday () in
       (* start local training *)
-      let params = task.params in
-      let x = task.data_x in
-      let y = task.data_y in
+      let params = task.client_params in
+      let x = task.train_x in
+      let y = task.train_y in
       let grad, loss = M.calculate_gradient ~params ~init_model:false model x y t in
       let result = (grad, loss) in
       overwrite_file "computation.txt" (Unix.gettimeofday () -. start_t);
@@ -395,7 +369,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
        ) vars 
 
   (* Stop scheduling if model finishes training *)
-  let stop task context = exit_condition task.id
+  let stop task context = exit_condition task.sid
 
   let train_generic ?params nn x y tx ty jid url =
     (* prepare params and make task *)
@@ -403,14 +377,16 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       | Some p -> p
       | None   -> Params.default ()
     in
-    let id = Owl_stats.uniform_int_rvs ~a:0 ~b:max_int in
+    let sid = Owl_stats.uniform_int_rvs ~a:0 ~b:max_int in
+    let cid = Owl_stats.uniform_int_rvs ~a:0 ~b:max_int in
 
-    let task = make_task id params nn x y tx ty in
+    let server_task = make_server_task sid params nn x tx ty in
+    let client_task = make_client_task cid params x y in 
     (* register sched/push/pull/stop/barrier *)
-    E.register_schedule (schedule task);
-    E.register_pull (pull task);
-    E.register_push (push task);
-    E.register_stop (stop task);
+    E.register_schedule (schedule server_task);
+    E.register_pull (pull server_task);
+    E.register_push (push client_task);
+    E.register_stop (stop server_task);
     E.start ~barrier:E.ASP jid url
 
 

@@ -539,7 +539,7 @@ module Make
     gs, loss
 
   (* Returns state of model given gradient and loss *)
-  let update_network ?state ?params ?(init_model=true) nn gradients delay loss x =
+  let update_network ?state ?params ?(init_model=true) nn gradients delay loss x_size =
     if init_model = true then init nn;
     let w = mkpar nn in
     let l = loss in
@@ -547,11 +547,12 @@ module Make
     let gs = gradients in
     let u = update nn in
     let s = save nn in
+    let xs = x_size in
     let p = match params with
       | Some p -> p
       | None   -> Optimise.Params.default ()
     in
-    Optimise.update_network_server ?state p w gs d l u s x
+    Optimise.update_network_server ?state p w gs d l u s xs
     
 
   let train_generic ?state ?params ?(init_model=true) nn x y =
