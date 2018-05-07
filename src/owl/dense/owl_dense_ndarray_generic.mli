@@ -350,13 +350,14 @@ val resize : ?head:bool -> ('a, 'b) t -> int array -> ('a, 'b) t
 (**
 ``resize ~head x d`` resizes the ndarray ``x``. If there are less number of
 elelments in the new shape than the old one, the new ndarray shares part of
-the memeory with the old ``x``. ``head`` indicates the alignment between the new
-and old data, either from head or from tail. Note the data is flattened
+the memeory with the old ``x``. ``head`` indicates the alignment between the
+new and old data, either from head or from tail. Note the data is flattened
 before the operation.
 
 If there are more elements in the new shape ``d``. Then new memeory space will
-be allocated and the content of ``x`` will be copied to the new memory. The rest
-of the allocated space will be filled with zeros.
+be allocated and the content of ``x`` will be copied to the new memory. The
+rest of the allocated space will be filled with zeros. The default value of
+``head`` is ``true``.
  *)
 
 val reshape : ('a, 'b) t -> int array -> ('a, 'b) t
@@ -419,6 +420,8 @@ val repeat : ?axis:int -> ('a, 'b) t -> int -> ('a, 'b) t
 ``repeat ~axis x a`` repeats the elements along ``axis`` for ``a`` times. The default
 value of ``?axis`` is the highest dimension of ``x``. This function is similar to
 ``numpy.repeat`` except that ``a`` is an integer instead of an array.
+
+Not that the ``axis`` can be negative.
  *)
 
 val concat_vertical : ('a, 'b) t -> ('a, 'b) t -> ('a, 'b) t
@@ -509,7 +512,7 @@ val expand : ?hi:bool -> ('a, 'b) t -> int -> ('a, 'b) t
 (**
 ``expand x d`` reshapes ``x`` by increasing its rank from ``num_dims x`` to
 ``d``. The opposite operation is ``squeeze x``. The ``hi`` parameter is used to
-specify wether the expandsion is along high dimension (by setting ``true``), or
+specify whether the expandsion is along high dimension (by setting ``true``), or
 along the low dimension (by setting ``false``). The default value is ``false``.
  *)
 
@@ -543,6 +546,13 @@ val sort : ('a, 'b) t -> ('a, 'b) t
 ``sort x`` performs quicksort of the elelments in ``x``. A new copy is returned
 as result, the original ``x`` remains intact. If you want to perform in-place
 sorting, please use `sort_` instead.
+ *)
+
+val argsort : ('a, 'b) t -> (int64, int64_elt) t
+(**
+``argsort x`` returns the indices with which the elements in ``x`` are sorted in
+increasing order. Note that the returned index ndarray has the same shape as
+that of ``x``, and the indices are 1D indices.
  *)
 
 val draw : ?axis:int -> ('a, 'b) t -> int -> ('a, 'b) t * int array
@@ -1463,10 +1473,13 @@ val softsign : (float, 'a) t -> (float, 'a) t
 elements in ``x`` and returns the result in a new ndarray.
  *)
 
-val softmax : (float, 'a) t -> (float, 'a) t
+val softmax : ?axis:int -> (float, 'a) t -> (float, 'a) t
 (**
 ``softmax x`` computes the softmax functions ``(exp x) / (sum (exp x))`` of
-all the elements in ``x`` and returns the result in a new array.
+all the elements along the specified ``axis`` in ``x`` and returns the result
+in a new ndarray.
+
+By default, ``axis = -1``, i.e. along the highest dimension.
  *)
 
 val sigmoid : (float, 'a) t -> (float, 'a) t
@@ -1592,8 +1605,8 @@ val proj : (Complex.t, 'a) t -> (Complex.t, 'a) t
 
 val add : ('a, 'b) t -> ('a, 'b) t -> ('a, 'b) t
 (**
-``add x y`` adds all the elements in ``x`` and ``y`` elementwise, and returns the
-result in a new ndarray.
+``add x y`` adds all the elements in ``x`` and ``y`` elementwise, and returns
+the result in a new ndarray.
 
 General broadcast operation is automatically applied to add/sub/mul/div, etc.
 The function compares the dimension element-wise from the highest to the
@@ -1603,8 +1616,8 @@ lowest with the following broadcast rules (same as numpy):
 
 val sub : ('a, 'b) t -> ('a, 'b) t -> ('a, 'b) t
 (**
-``sub x y`` subtracts all the elements in ``x`` and ``y`` elementwise, and returns
-the result in a new ndarray.
+``sub x y`` subtracts all the elements in ``x`` and ``y`` elementwise, and
+returns the result in a new ndarray.
  *)
 
 val mul : ('a, 'b) t -> ('a, 'b) t -> ('a, 'b) t
@@ -1615,8 +1628,8 @@ returns the result in a new ndarray.
 
 val div : ('a, 'b) t -> ('a, 'b) t -> ('a, 'b) t
 (**
-``div x y`` divides all the elements in ``x`` and ``y`` elementwise, and returns
-the result in a new ndarray.
+``div x y`` divides all the elements in ``x`` and ``y`` elementwise, and
+returns the result in a new ndarray.
  *)
 
 val add_scalar : ('a, 'b) t -> 'a -> ('a, 'b) t
@@ -1849,6 +1862,11 @@ val conv2d : ?padding:padding -> ('a, 'b) t -> ('a, 'b) t -> int array -> ('a, '
 []
  *)
 
+val conv2d_transpose : ?padding:padding -> ('a, 'b) t -> ('a, 'b) t -> int array -> ('a, 'b) t
+(**
+[]
+ *)
+
 val conv3d : ?padding:padding -> ('a, 'b) t -> ('a, 'b) t -> int array -> ('a, 'b) t
 (**
 []
@@ -1905,6 +1923,16 @@ val conv2d_backward_input : ('a, 'b) t -> ('a, 'b) t -> int array -> ('a, 'b) t 
  *)
 
 val conv2d_backward_kernel : ('a, 'b) t -> ('a, 'b) t -> int array -> ('a, 'b) t -> ('a, 'b) t
+(**
+[]
+ *)
+
+val conv2d_transpose_backward_input : ('a, 'b) t -> ('a, 'b) t -> int array -> ('a, 'b) t -> ('a, 'b) t
+(**
+[]
+ *)
+
+val conv2d_transpose_backward_kernel : ('a, 'b) t -> ('a, 'b) t -> int array -> ('a, 'b) t -> ('a, 'b) t
 (**
 []
  *)
@@ -2357,7 +2385,7 @@ val sigmoid_ : ('a, 'b) t -> unit
 ``sigmoid_ x`` is similar to ``sigmoid`` but output is written to ``x``
  *)
 
-val softmax_ : ('a, 'b) t -> unit
+val softmax_ : ?axis:int -> ('a, 'b) t -> unit
 (**
 ``softmax_ x`` is similar to ``softmax`` but output is written to ``x``
  *)

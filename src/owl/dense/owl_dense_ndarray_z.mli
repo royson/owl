@@ -148,6 +148,8 @@ val bottom : arr -> int -> int array array
 
 val sort : arr -> arr
 
+val argsort : arr -> (int64, int64_elt, c_layout) Genarray.t
+
 val draw : ?axis:int -> arr -> int -> arr * int array
 
 val mmap : Unix.file_descr -> ?pos:int64 -> bool -> int array -> arr
@@ -504,6 +506,8 @@ val conv2d : ?padding:padding -> arr -> arr -> int array -> arr
 
 val conv3d : ?padding:padding -> arr -> arr -> int array -> arr
 
+val conv2d_transpose : ?padding:padding -> arr -> arr -> int array -> arr
+
 val max_pool1d : ?padding:padding -> arr -> int array -> int array -> arr
 
 val max_pool2d : ?padding:padding -> arr -> int array -> int array -> arr
@@ -529,6 +533,10 @@ val conv2d_backward_kernel : arr -> arr -> int array -> arr -> arr
 val conv3d_backward_input : arr -> arr -> int array -> arr -> arr
 
 val conv3d_backward_kernel : arr -> arr -> int array -> arr -> arr
+
+val conv2d_transpose_backward_input : arr -> arr -> int array -> arr -> arr
+
+val conv2d_transpose_backward_kernel : arr -> arr -> int array -> arr -> arr
 
 val max_pool1d_backward : padding -> arr -> int array -> int array -> arr -> arr
 
@@ -690,8 +698,6 @@ val softplus_ : arr -> unit
 val softsign_ : arr -> unit
 
 val sigmoid_ : arr -> unit
-
-val softmax_ : arr -> unit
 
 val cumsum_ : ?axis:int -> arr -> unit
 

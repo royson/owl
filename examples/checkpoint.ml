@@ -9,30 +9,6 @@ open Algodiff.S
 
 let make_network input_shape =
   input input_shape
-(*   |> lambda (fun x -> Maths.(x / F 256.))
-  |> conv2d [|5;5;1;32|] [|1;1|] ~act_typ:Activation.Relu
-  |> max_pool2d [|2;2|] [|2;2|]
-  |> dropout 0.1
-  |> fully_connected 1024 ~act_typ:Activation.Relu
-  |> linear 10 ~act_typ:Activation.Softmax
-  |> get_network *)
-
-(*     |> conv2d [|3;3;1;32|] [|1;1|] ~act_typ:Activation.Relu
-    |> conv2d [|3;3;32;64|] [|1;1|] ~act_typ:Activation.Relu
-    |> max_pool2d [|2;2|] [|2;2|]
-    |> dropout 0.5
-    |> flatten
-    |> linear 128 ~act_typ:Activation.Relu
-    |> dropout 0.5
-    |> linear 10 ~act_typ:Activation.Softmax
-    |> get_network *)
-    (* MLP *)
-(*   |> flatten 
-  |> linear 256 ~act_typ:Activation.Tanh
-  |> linear 128 ~act_typ:Activation.Relu
-  |> linear 10 ~act_typ:Activation.Softmax
-  |> get_network *)
-
   |> normalisation ~decay:0.9
   |> conv2d [|3;3;3;32|] [|1;1|] ~act_typ:Activation.Relu
   |> conv2d [|3;3;32;32|] [|1;1|] ~act_typ:Activation.Relu ~padding:VALID

@@ -36,6 +36,7 @@
     owl_ndarray_contract_stub
     owl_ndarray_transpose_stub
     owl_ndarray_slide_stub
+    owl_ndarray_sort_stub
     owl_ndarray_repeat_stub
     owl_matrix_swap_stub
     owl_matrix_check_stub
@@ -57,6 +58,7 @@
     owl_stats_dist_binomial
     owl_stats_dist_cauchy
     owl_stats_dist_chi2
+    owl_stats_dist_dirichlet
     owl_stats_dist_exponential
     owl_stats_dist_exponpow
     owl_stats_dist_f
@@ -72,6 +74,7 @@
     owl_stats_dist_lognormal
     owl_stats_dist_logseries
     owl_stats_dist_lomax
+    owl_stats_dist_multinomial
     owl_stats_dist_negative_binomial
     owl_stats_dist_noncentral_chi2
     owl_stats_dist_noncentral_f
