@@ -57,10 +57,6 @@ module type ModelSig = sig
 
   val save : network -> string -> unit
 
-  (* val forward : network -> t -> t * t array array *)
-
-  (* val train_generic : ?state:Checkpoint.state -> ?params:Params.typ -> ?init_model:bool -> network -> t -> t -> Checkpoint.state *)
-
   val calculate_gradient : ?params:Params.typ -> ?init_model:bool -> network -> t -> t -> int -> t array array * t
 
   val update_network : ?state:Checkpoint.state -> ?params:Params.typ -> ?init_model:bool -> network 
@@ -295,7 +291,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       let gradient, loss = v in
       let schedule_time = E.get (address ^ "time") |> fst in
       let response_time = (Unix.gettimeofday () -. schedule_time) in
-      overwrite_file "respond.txt" response_time;
+      write_float_to_file "respond.txt" response_time;
       let params = task.server_params in
       let xs = task.train_size in
       let model = local_model task in
@@ -364,7 +360,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       let y = task.train_y in
       let grad, loss = M.calculate_gradient ~params ~init_model:false model x y t in
       let result = (grad, loss) in
-      overwrite_file "computation.txt" (Unix.gettimeofday () -. start_t);
+      write_float_to_file "computation.txt" (Unix.gettimeofday () -. start_t);
       (k, result)      
        ) vars 
 
