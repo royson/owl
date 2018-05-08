@@ -14,7 +14,7 @@ open Owl_optimise.S
 module type EngineSig = sig
 
   type param_context
-  type barrier = ASP | BSP | SSP | PSP
+  type barrier = ASP | PASP | BSP | SSP | PSP
 
   (* functions of parameter server engine *)
 
@@ -35,6 +35,8 @@ module type EngineSig = sig
   val register_push : ('a -> ('b * 'c) list -> ('b * ('d * 'e)) list) -> unit
 
   val register_stop : (param_context ref -> bool) -> unit
+
+  val update_progressive : unit -> unit
 
 end
 
@@ -285,7 +287,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
 
   let pull task address vars =
     let n = E.worker_num () |> float_of_int in
-    assert (n >= 1.); (* at least one worker *)
+    assert (n >= 2.); (* at least two worker *)
     (* there should be only one item in list *)
     List.map (fun (k, v) ->
       let gradient, loss = v in
@@ -330,7 +332,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
                          (Owl_utils.aarr_map2 (fun w u -> Maths.(w + u)) total_gs gradient)
       | _             -> () 
       in
-      
+
       let t = Unix.gettimeofday () -. task.start_at in
       let loss' = unpack_flt loss in
 
@@ -342,6 +344,10 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       (* task.loss <- loss' :: task.loss;
       task.time <- t :: task.time;
       plot_loss_time task.loss task.time; *) 
+
+      (* Update progressive variable for PASP barrier every epoch *)
+      if Checkpoint.(state.current_batch mod state.batches_per_epoch = 0) then
+        E.update_progressive ();
 
       if Checkpoint.(state.stop) then
         test_network task;
@@ -383,7 +389,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     E.register_pull (pull server_task);
     E.register_push (push client_task);
     E.register_stop (stop server_task);
-    E.start ~barrier:E.ASP jid url
+    E.start ~barrier:E.PASP jid url
 
 
   let train ?params nn x y tx ty jid url = train_generic ?params nn (Arr x) (Arr y) 
