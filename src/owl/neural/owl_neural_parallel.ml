@@ -346,8 +346,8 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       plot_loss_time task.loss task.time; *) 
 
       (* Update progressive variable for PASP barrier every epoch *)
-      if Checkpoint.(state.current_batch mod state.batches_per_epoch = 0) then
-        E.update_progressive ();
+      (* if Checkpoint.(state.current_batch mod state.batches_per_epoch = 0) then *)
+      E.update_progressive ();
 
       if Checkpoint.(state.stop) then
         test_network task;
