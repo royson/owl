@@ -300,14 +300,16 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       let params = task.server_params in
       let xs = task.train_size in
       let model = local_model task in
+      let iter = local_iteration task in
       (* Calculate delay for revised learning rate *)
       let delay = match params.learning_rate with
-      | AdaDelay _ -> let iter = local_iteration task in
+      | AdaDelay _ -> (* let iter = local_iteration task in *)
                       let prev_iter = E.get (address ^ "iter") |> fst in
-                      E.set (string_of_int task.sid ^ "iter") (iter + 1);
+                      (* E.set (string_of_int task.sid ^ "iter") (iter + 1); *)
                       iter - prev_iter
       | _          -> 0
       in
+      E.set (string_of_int task.sid ^ "iter") (iter + 1);
       (* Calculate gradient for revision step *)
       let gradient_back = match params.learning_rate with 
       | AdaptiveRev _ -> let gradient_old = E.get (address ^ "gradient") |> fst in
