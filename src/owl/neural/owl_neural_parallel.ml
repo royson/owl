@@ -268,17 +268,20 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     (* get model, if none then init locally *)
     let model = local_model task in
     let batch_no = task.schedule_no in
+    let iter = local_iteration task in
     (* If AdaptiveRevision, record total gradient for worker before schedule.
        If AdaDelay, record current iteration *)
     let tasks = List.mapi (fun i x ->
       let _ = match params.learning_rate with 
       | AdaptiveRev _   -> let total_gs = total_gradient task in
                            E.set (x ^ "gradient") total_gs
-      | AdaDelay _      -> let iter = local_iteration task in
+      | AdaDelay _      -> (* let iter = local_iteration task in *)
                            E.set (x ^ "iter") iter
       | DelayComp _     -> E.set (x ^ "model") (M.mkpar model)
       | _               -> () in
       E.set (x ^ "time") (Unix.gettimeofday ());
+      Owl_log.info "Scheduled: %i" iter;
+      Owl_log.info "Mini-Batch: %i" (batch_no + i); 
       (x, [(task.sid, (model, batch_no + i))])
     ) workers
     in
@@ -346,9 +349,9 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       plot_loss_time task.loss task.time; *) 
 
       (* Update progressive variable for PASP barrier every epoch *)
-      if Checkpoint.(state.current_batch mod 10 = 0) then
+(*       if Checkpoint.(state.current_batch mod 10 = 0) then
         E.update_progressive ();
-
+ *)
       if Checkpoint.(state.stop) then
         test_network task;
       (k, model)
@@ -389,7 +392,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     E.register_pull (pull server_task);
     E.register_push (push client_task);
     E.register_stop (stop server_task);
-    E.start ~barrier:E.PASP jid url
+    E.start ~barrier:E.ASP jid url
 
 
   let train ?params nn x y tx ty jid url = train_generic ?params nn (Arr x) (Arr y) 
