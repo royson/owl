@@ -268,20 +268,17 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     (* get model, if none then init locally *)
     let model = local_model task in
     let batch_no = task.schedule_no in
-    let iter = local_iteration task in
     (* If AdaptiveRevision, record total gradient for worker before schedule.
        If AdaDelay, record current iteration *)
     let tasks = List.mapi (fun i x ->
       let _ = match params.learning_rate with 
       | AdaptiveRev _   -> let total_gs = total_gradient task in
                            E.set (x ^ "gradient") total_gs
-      | AdaDelay _      -> (* let iter = local_iteration task in *)
+      | AdaDelay _      -> let iter = local_iteration task in
                            E.set (x ^ "iter") iter
       | DelayComp _     -> E.set (x ^ "model") (M.mkpar model)
       | _               -> () in
       E.set (x ^ "time") (Unix.gettimeofday ());
-      Owl_log.info "Scheduled: %i" iter;
-      Owl_log.info "Mini-Batch: %i" (batch_no + i); 
       (x, [(task.sid, (model, batch_no + i))])
     ) workers
     in
@@ -300,16 +297,14 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       let params = task.server_params in
       let xs = task.train_size in
       let model = local_model task in
-      let iter = local_iteration task in
       (* Calculate delay for revised learning rate *)
       let delay = match params.learning_rate with
-      | AdaDelay _ -> (* let iter = local_iteration task in *)
+      | AdaDelay _ -> let iter = local_iteration task in
                       let prev_iter = E.get (address ^ "iter") |> fst in
-                      (* E.set (string_of_int task.sid ^ "iter") (iter + 1); *)
+                      E.set (string_of_int task.sid ^ "iter") (iter + 1);
                       iter - prev_iter
       | _          -> 0
       in
-      E.set (string_of_int task.sid ^ "iter") (iter + 1);
       (* Calculate gradient for revision step *)
       let gradient_back = match params.learning_rate with 
       | AdaptiveRev _ -> let gradient_old = E.get (address ^ "gradient") |> fst in
@@ -350,10 +345,10 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       task.time <- t :: task.time;
       plot_loss_time task.loss task.time; *) 
 
-      (* Update progressive variable for PASP barrier every epoch *)
-(*       if Checkpoint.(state.current_batch mod 10 = 0) then
+      (* Update progressive variable for PASP barrier every 5 epochs *)
+      if Checkpoint.(state.current_batch mod (state.current_batch * 5) = 0) then
         E.update_progressive ();
- *)
+
       if Checkpoint.(state.stop) then
         test_network task;
       (k, model)
@@ -394,7 +389,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     E.register_pull (pull server_task);
     E.register_push (push client_task);
     E.register_stop (stop server_task);
-    E.start ~barrier:E.ASP jid url
+    E.start ~barrier:E.PASP jid url
 
 
   let train ?params nn x y tx ty jid url = train_generic ?params nn (Arr x) (Arr y) 
