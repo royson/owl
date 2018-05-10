@@ -36,7 +36,9 @@ module type EngineSig = sig
 
   val register_stop : (param_context ref -> bool) -> unit
 
-  val update_progressive : unit -> unit
+  val add_workers : int -> bool
+
+  val remove_workers : int -> unit
 
 end
 
@@ -287,7 +289,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
 
   let pull task address vars =
     let n = E.worker_num () |> float_of_int in
-    assert (n >= 2.); (* at least two worker *)
+    assert (n >= 1.); (* at least one worker *)
     (* there should be only one item in list *)
     List.map (fun (k, v) ->
       let gradient, loss = v in
@@ -345,12 +347,26 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       task.time <- t :: task.time;
       plot_loss_time task.loss task.time; *) 
 
-      (* Update progressive variable for PASP barrier every 5 epochs *)
-      if Checkpoint.(state.current_batch mod (state.batches_per_epoch * 5) = 0) then
-        E.update_progressive ();
-
-      if Checkpoint.(state.stop) then
-        test_network task;
+      (* Update progressive variable for PASP barrier every 2 epochs *)
+      let _ = match Checkpoint.(state.current_batch mod (state.batches_per_epoch * 2) = 0) with
+        | true  -> E.add_workers 3
+        | false -> true
+      in
+      (* Remove every 3 epochs *)
+      let _ = match Checkpoint.(state.current_batch mod (state.batches_per_epoch * 3) = 0) with
+        | true  -> E.remove_workers 2
+        | false -> ()
+      in
+        (* if (E.update_progressive ()) = false then
+          (* Lower learning rate *)
+          Owl_log.info "Lowering learning rate.."
+          task.server_params  *)
+          
+      let _ = match Checkpoint.(state.stop) with
+        | true  -> test_network task
+        | false -> ()
+      in
+      
       (k, model)
     ) vars
 
