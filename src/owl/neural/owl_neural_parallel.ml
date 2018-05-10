@@ -265,7 +265,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     unpack_flt Maths.(F 1. - (F 1. / F (float_of_int num_of_workers)))
 
   (* retrieve total_momentum for PASP *)
-  let total_momentum task  = 
+  let total_momentum task = 
     let params = task.server_params in
     let k = (string_of_int task.sid ^ "total_momentum") in
     try E.get k |> fst
@@ -320,6 +320,8 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       let params = task.server_params in
       let xs = task.train_size in
       let model = local_model task in
+      (* Hotfix: initialize total_momentum. Might need create pre-start function *)
+      let _ = total_momentum task in 
       (* Calculate delay for revised learning rate *)
       let delay = match params.learning_rate with
       | AdaDelay _ -> let iter = local_iteration task in
