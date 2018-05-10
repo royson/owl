@@ -24,6 +24,8 @@ module type EngineSig = sig
 
   val worker_num : unit -> int
 
+  val progressive_num : unit -> int
+
   val start : ?barrier:barrier -> string -> string -> unit
 
   val register_barrier : (param_context ref -> int * (string list)) -> unit
@@ -38,7 +40,7 @@ module type EngineSig = sig
 
   val add_workers : int -> bool
 
-  val remove_workers : int -> unit
+  val remove_workers : int -> bool
 
 end
 
@@ -78,7 +80,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     mutable state              : Checkpoint.state option;
     mutable server_params      : Params.typ;
     mutable model              : M.network;
-    mutable train_size         : int;          (* Training data size for batch calculation *)
+    mutable train_size         : int;        (* Training data size for batch calculation *)
     mutable test_x             : t;          
     mutable test_y             : t;
     mutable start_at           : float;      (* Time training starts *)
@@ -86,7 +88,6 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     (* For Graph Plots *)
     mutable loss               : float list; (* Losses received *)
     mutable time               : float list; (* Total time executed by task *)
-    
   }
 
   type client_task = {
@@ -242,7 +243,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       E.get task.sid |> fst;
     )
 
-  (* retrieve the number of update iterations at parameter server *)
+  (* retrieve the number of update iterations at parameter server for AdaDelay *)
   let local_iteration task =
     let k = (string_of_int task.sid ^ "iter") in
     try E.get k |> fst
@@ -260,6 +261,26 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       E.get k |> fst;
     )
 
+  let calc_implicit_momentum num_of_workers =
+    unpack_flt Maths.(F 1. - (F 1. / F (float_of_int num_of_workers)))
+
+  (* retrieve total_momentum for PASP *)
+  let total_momentum task  = 
+    let params = task.server_params in
+    let k = (string_of_int task.sid ^ "total_momentum") in
+    try E.get k |> fst
+    with Not_found -> (
+      let implicit_momentum = E.progressive_num () |> calc_implicit_momentum in 
+      let explicit_momentum = match params.momentum with
+      | Standard m -> m
+      | Nesterov m -> m
+      | None       -> 0.0
+      in
+      E.set k (explicit_momentum +. implicit_momentum);
+      Owl_log.warn "explicit_momentum: %f" explicit_momentum;
+      Owl_log.warn "implicit_momentum: %f" implicit_momentum;
+      E.get k |> fst;
+    )
 
   let exit_condition task_id =
     try E.get (string_of_int task_id ^ "finish") |> fst
@@ -348,25 +369,38 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       plot_loss_time task.loss task.time; *) 
 
       (* Update progressive variable for PASP barrier every 2 epochs *)
-      let _ = match Checkpoint.(state.current_batch mod (state.batches_per_epoch * 2) = 0) with
+      let workers_added = match Checkpoint.(state.current_batch mod (state.batches_per_epoch * 2) = 0) with
         | true  -> E.add_workers 3
-        | false -> true
+        | false -> false
       in
-      (* Remove every 3 epochs *)
-      let _ = match Checkpoint.(state.current_batch mod (state.batches_per_epoch * 3) = 0) with
+      (* Remove every 3 epochs. Always return true for this example when matched. *)
+      let workers_removed = match Checkpoint.(state.current_batch mod (state.batches_per_epoch * 3) = 0) with
         | true  -> E.remove_workers 2
-        | false -> ()
+        | false -> false
       in
-        (* if (E.update_progressive ()) = false then
-          (* Lower learning rate *)
-          Owl_log.info "Lowering learning rate.."
-          task.server_params  *)
+
+      (* Detect if workers changed *)
+      let _ = match (workers_added, workers_removed) with
+        | (false, false) -> ()
+        | _              -> let w = E.progressive_num () in
+                            let tm = total_momentum task in
+                            let im = calc_implicit_momentum w in
+                            let em = tm -. im in
+                            Owl_log.warn "Worker count changed to %i" w;
+                            Owl_log.warn "Total momentum: %f. New implicit momentum: %f." tm im;
+                            Owl_log.warn "Setting new explicit momentum: %f." em;
+                            match params.momentum with
+                              | Standard _ -> params.momentum <- Momentum.Standard em
+                              | Nesterov _ -> params.momentum <- Momentum.Nesterov em
+                              | None -> params.momentum <- Momentum.Standard em
+
+      in
           
       let _ = match Checkpoint.(state.stop) with
         | true  -> test_network task
         | false -> ()
       in
-      
+
       (k, model)
     ) vars
 
