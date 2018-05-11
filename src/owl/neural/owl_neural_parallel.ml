@@ -286,7 +286,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
   let difference_in_workers task = 
     let w, lr  = base_workers_lr task in
     let w' = E.progressive_num () in
-    (w - w', lr)
+    (w' - w, lr)
 
   (* retrieve total_momentum for PASP *)
   let total_momentum task = 
@@ -411,25 +411,20 @@ module Make (M : ModelSig) (E : EngineSig) = struct
         | (false, false) -> ()
         | _              -> let d, lr = difference_in_workers task in
                             let d = float_of_int d in
-                            let d' = abs_float d in
                             let w = E.progressive_num () in (*for printing only. remove later*)
                             Owl_log.warn "Worker count changed to %i" w;
+                            let nlr = lr *. (exp (-0.1 *. d)) in
                             match params.learning_rate with
-                            | Adagrad _          -> Owl_log.warn "New Learning Rate: %f" (if d < 0. then (lr /. d') else (lr *. d'));
-                                                    params.learning_rate <- 
-                                                    if d < 0. then Adagrad (lr /. d') else Adagrad (lr *. d')
-                            | Const _            -> Owl_log.warn "New Learning Rate: %f" (if d < 0. then (lr /. d') else (lr *. d'));
-                                                    params.learning_rate <- 
-                                                    if d < 0. then Const (lr /. d') else Const (lr *. d')
-                            | AdaptiveRev _      -> Owl_log.warn "New Learning Rate: %f" (if d < 0. then (lr /. d') else (lr *. d'));
-                                                    params.learning_rate <- 
-                                                    if d < 0. then AdaptiveRev (lr /. d') else AdaptiveRev (lr *. d')
-                            | AdaDelay _         -> Owl_log.warn "New Learning Rate: %f" (if d < 0. then (lr /. d') else (lr *. d'));
-                                                    params.learning_rate <- 
-                                                    if d < 0. then AdaDelay (lr /. d') else AdaDelay (lr *. d')
-                            | DelayComp (_, v, m)-> Owl_log.warn "New Learning Rate: %f" (if d < 0. then (lr /. d') else (lr *. d'));
-                                                    params.learning_rate <- 
-                                                    if d < 0. then DelayComp ((lr /. d'), v, m) else DelayComp ((lr *. d'), v, m)
+                            | Adagrad _          -> Owl_log.warn "New Learning Rate: %f" nlr;
+                                                    params.learning_rate <- Adagrad nlr
+                            | Const _            -> Owl_log.warn "New Learning Rate: %f" nlr;
+                                                    params.learning_rate <- Const nlr
+                            | AdaptiveRev _      -> Owl_log.warn "New Learning Rate: %f" nlr;
+                                                    params.learning_rate <- AdaptiveRev nlr
+                            | AdaDelay _         -> Owl_log.warn "New Learning Rate: %f" nlr;
+                                                    params.learning_rate <- AdaDelay nlr
+                            | DelayComp (_, v, m)-> Owl_log.warn "New Learning Rate: %f" nlr;
+                                                    params.learning_rate <- DelayComp (nlr, v, m)
                             | _                  -> ()
                             
                             (* let w = E.progressive_num () in
