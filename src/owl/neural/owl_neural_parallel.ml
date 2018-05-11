@@ -264,6 +264,21 @@ module Make (M : ModelSig) (E : EngineSig) = struct
   let calc_implicit_momentum num_of_workers =
     unpack_flt Maths.(F 1. - (F 1. / F (float_of_int num_of_workers)))
 
+  (* for learning_rate for PASP *)
+  let base_number_of_workers task =
+    let k = (string_of_int task.sid ^ "base_workers") in
+    try E.get k |> fst
+    with Not_found -> (
+      E.set k (E.progressive_num ());
+      E.get k |> fst;
+    )
+
+  (* for learning_rate for PASP *)
+  let difference_in_workers task = 
+    let i = base_number_of_workers task in
+    let j = E.progressive_num () in
+    i - j
+
   (* retrieve total_momentum for PASP *)
   let total_momentum task = 
     let params = task.server_params in
@@ -321,7 +336,8 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       let xs = task.train_size in
       let model = local_model task in
       (* Hotfix: initialize total_momentum. Might need create pre-start function *)
-      let _ = total_momentum task in 
+      (* let _ = total_momentum task in  *)
+      let _ = base_number_of_workers task in
       (* Calculate delay for revised learning rate *)
       let delay = match params.learning_rate with
       | AdaDelay _ -> let iter = local_iteration task in
@@ -384,22 +400,31 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       (* Detect if workers changed *)
       let _ = match (workers_added, workers_removed) with
         | (false, false) -> ()
-        | _              -> let w = E.progressive_num () in
+        | _              -> let d = float_of_int (difference_in_workers task) in
+                            match params.learning_rate with
+                            | Adagrad a          -> params.learning_rate <- 
+                                                    if d < 0. then Adagrad (a /. d) else Adagrad (a *. d)
+                            | Const a            -> params.learning_rate <- 
+                                                    if d < 0. then Const (a /. d) else Const (a *. d)
+                            | AdaptiveRev a      -> params.learning_rate <- 
+                                                    if d < 0. then AdaptiveRev (a /. d) else AdaptiveRev (a *. d)
+                            | AdaDelay a         -> params.learning_rate <- 
+                                                    if d < 0. then AdaDelay (a /. d) else AdaDelay (a *. d)
+                            | DelayComp (a, v, m)-> params.learning_rate <- 
+                                                    if d < 0. then DelayComp ((a /. d), v, m) else DelayComp ((a *. d), v, m)
+                            | _                  -> ()
+                            
+                            (* let w = E.progressive_num () in
                             let tm = total_momentum task in
                             let im = calc_implicit_momentum w in
-                            let em = (tm -. im) *. 2. in
+                            let em = (tm -. im) in
                             Owl_log.warn "Worker count changed to %i" w;
                             Owl_log.warn "Total momentum: %f. New implicit momentum: %f." tm im;
                             Owl_log.warn "Setting new explicit momentum: %f." em;
-                            let _ = match params.momentum with
+                            match params.momentum with
                               | Standard _ -> params.momentum <- Momentum.Standard em
                               | Nesterov _ -> params.momentum <- Momentum.Nesterov em
-                              | None -> params.momentum <- Momentum.Standard em
-                            in
-                            match task.server_params.momentum with
-                              | Standard m -> Owl_log.warn "NEW: %f" m
-                              | Nesterov m -> Owl_log.warn "NEW: %f" m
-                              | None -> Owl_log.warn "NEW: 0.0"
+                              | None -> params.momentum <- Momentum.Standard em *)
 
       in
           
