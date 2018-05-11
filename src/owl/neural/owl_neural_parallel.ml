@@ -387,7 +387,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
         | _              -> let w = E.progressive_num () in
                             let tm = total_momentum task in
                             let im = calc_implicit_momentum w in
-                            let em = tm -. im in
+                            let em = (tm -. im) *. 2. in
                             Owl_log.warn "Worker count changed to %i" w;
                             Owl_log.warn "Total momentum: %f. New implicit momentum: %f." tm im;
                             Owl_log.warn "Setting new explicit momentum: %f." em;
