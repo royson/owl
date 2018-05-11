@@ -391,10 +391,15 @@ module Make (M : ModelSig) (E : EngineSig) = struct
                             Owl_log.warn "Worker count changed to %i" w;
                             Owl_log.warn "Total momentum: %f. New implicit momentum: %f." tm im;
                             Owl_log.warn "Setting new explicit momentum: %f." em;
-                            match params.momentum with
+                            let _ = match params.momentum with
                               | Standard _ -> params.momentum <- Momentum.Standard em
                               | Nesterov _ -> params.momentum <- Momentum.Nesterov em
                               | None -> params.momentum <- Momentum.Standard em
+                            in
+                            match task.server_params.momentum with
+                              | Standard m -> Owl_log.warn "NEW: %f" m
+                              | Nesterov m -> Owl_log.warn "NEW: %f" m
+                              | None -> Owl_log.warn "NEW: 0.0"
 
       in
           
