@@ -401,16 +401,23 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       let _ = match (workers_added, workers_removed) with
         | (false, false) -> ()
         | _              -> let d = float_of_int (difference_in_workers task) in
+                            let w = E.progressive_num () in (*for printing only. remove later*)
+                            Owl_log.warn "Worker count changed to %i" w;
                             match params.learning_rate with
-                            | Adagrad a          -> params.learning_rate <- 
+                            | Adagrad a          -> Owl_log.warn "New Learning Rate: %f" (if d < 0. then (a /. d) else (a *. d));
+                                                    params.learning_rate <- 
                                                     if d < 0. then Adagrad (a /. d) else Adagrad (a *. d)
-                            | Const a            -> params.learning_rate <- 
+                            | Const a            -> Owl_log.warn "New Learning Rate: %f" (if d < 0. then (a /. d) else (a *. d));
+                                                    params.learning_rate <- 
                                                     if d < 0. then Const (a /. d) else Const (a *. d)
-                            | AdaptiveRev a      -> params.learning_rate <- 
+                            | AdaptiveRev a      -> Owl_log.warn "New Learning Rate: %f" (if d < 0. then (a /. d) else (a *. d));
+                                                    params.learning_rate <- 
                                                     if d < 0. then AdaptiveRev (a /. d) else AdaptiveRev (a *. d)
-                            | AdaDelay a         -> params.learning_rate <- 
+                            | AdaDelay a         -> Owl_log.warn "New Learning Rate: %f" (if d < 0. then (a /. d) else (a *. d));
+                                                    params.learning_rate <- 
                                                     if d < 0. then AdaDelay (a /. d) else AdaDelay (a *. d)
-                            | DelayComp (a, v, m)-> params.learning_rate <- 
+                            | DelayComp (a, v, m)-> Owl_log.warn "New Learning Rate: %f" (if d < 0. then (a /. d) else (a *. d));
+                                                    params.learning_rate <- 
                                                     if d < 0. then DelayComp ((a /. d), v, m) else DelayComp ((a *. d), v, m)
                             | _                  -> ()
                             
