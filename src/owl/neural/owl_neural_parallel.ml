@@ -395,49 +395,46 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       task.time <- t :: task.time;
       plot_loss_time task.loss task.time; *) 
 
-      (* Update progressive variable for PASP barrier every 2 epochs *)
-      let workers_added = match Checkpoint.(state.current_batch mod (state.batches_per_epoch * 2) = 0) with
-        | true  -> E.add_workers 3
-        | false -> false
-      in
-      (* Remove every 3 epochs. Always return true for this example when matched. *)
-      let workers_removed = match Checkpoint.(state.current_batch mod (state.batches_per_epoch * 3) = 0) with
-        | true  -> E.remove_workers 2
+      (* Add/Remove workers for PASP barrier every epochs *)
+      let workers_changed = match Checkpoint.(state.current_batch mod (state.batches_per_epoch) = 0) with
+        | true  -> let b  = Owl_stats.uniform_int_rvs ~a:0 ~b:1 in
+                   let cw = Owl_stats.uniform_int_rvs ~a:1 ~b:18 in
+                   if b = 1 then E.add_workers cw else E.remove_workers cw
         | false -> false
       in
 
       (* Detect if workers changed *)
-      let _ = match (workers_added, workers_removed) with
-        | (false, false) -> ()
-        | _              -> let d, lr = difference_in_workers task in
-                            let d = float_of_int d in
-                            let w = E.progressive_num () in (*for printing only. remove later*)
-                            Owl_log.warn "Worker count changed to %i" w;
-                            let nlr = lr *. (exp (-0.075 *. d)) in
-                            match params.learning_rate with
-                            | Adagrad _          -> Owl_log.warn "New Learning Rate: %f" nlr;
-                                                    params.learning_rate <- Adagrad nlr
-                            | Const _            -> Owl_log.warn "New Learning Rate: %f" nlr;
-                                                    params.learning_rate <- Const nlr
-                            | AdaptiveRev _      -> Owl_log.warn "New Learning Rate: %f" nlr;
-                                                    params.learning_rate <- AdaptiveRev nlr
-                            | AdaDelay _         -> Owl_log.warn "New Learning Rate: %f" nlr;
-                                                    params.learning_rate <- AdaDelay nlr
-                            | DelayComp (_, v, m)-> Owl_log.warn "New Learning Rate: %f" nlr;
-                                                    params.learning_rate <- DelayComp (nlr, v, m)
-                            | _                  -> ()
-                            
-                            (* let w = E.progressive_num () in
-                            let tm = total_momentum task in
-                            let im = calc_implicit_momentum w in
-                            let em = (tm -. im) in
-                            Owl_log.warn "Worker count changed to %i" w;
-                            Owl_log.warn "Total momentum: %f. New implicit momentum: %f." tm im;
-                            Owl_log.warn "Setting new explicit momentum: %f." em;
-                            match params.momentum with
-                              | Standard _ -> params.momentum <- Momentum.Standard em
-                              | Nesterov _ -> params.momentum <- Momentum.Nesterov em
-                              | None -> params.momentum <- Momentum.Standard em *)
+      let _ = match workers_changed with
+        | false ->  ()
+        | true  ->  let d, lr = difference_in_workers task in
+                    let d = float_of_int d in
+                    let w = E.progressive_num () in (*for printing only. remove later*)
+                    Owl_log.warn "Worker count changed to %i" w;
+                    let nlr = lr *. (exp (-0.075 *. d)) in
+                    match params.learning_rate with
+                    | Adagrad _          -> Owl_log.warn "New Learning Rate: %f" nlr;
+                                            params.learning_rate <- Adagrad nlr
+                    | Const _            -> Owl_log.warn "New Learning Rate: %f" nlr;
+                                            params.learning_rate <- Const nlr
+                    | AdaptiveRev _      -> Owl_log.warn "New Learning Rate: %f" nlr;
+                                            params.learning_rate <- AdaptiveRev nlr
+                    | AdaDelay _         -> Owl_log.warn "New Learning Rate: %f" nlr;
+                                            params.learning_rate <- AdaDelay nlr
+                    | DelayComp (_, v, m)-> Owl_log.warn "New Learning Rate: %f" nlr;
+                                            params.learning_rate <- DelayComp (nlr, v, m)
+                    | _                  -> ()
+                    
+                    (* let w = E.progressive_num () in
+                    let tm = total_momentum task in
+                    let im = calc_implicit_momentum w in
+                    let em = (tm -. im) in
+                    Owl_log.warn "Worker count changed to %i" w;
+                    Owl_log.warn "Total momentum: %f. New implicit momentum: %f." tm im;
+                    Owl_log.warn "Setting new explicit momentum: %f." em;
+                    match params.momentum with
+                      | Standard _ -> params.momentum <- Momentum.Standard em
+                      | Nesterov _ -> params.momentum <- Momentum.Nesterov em
+                      | None -> params.momentum <- Momentum.Standard em *)
 
       in
           
