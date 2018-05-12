@@ -413,7 +413,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
                             let d = float_of_int d in
                             let w = E.progressive_num () in (*for printing only. remove later*)
                             Owl_log.warn "Worker count changed to %i" w;
-                            let nlr = lr *. (exp (-0.05 *. d)) in
+                            let nlr = lr *. (exp (-0.075 *. d)) in
                             match params.learning_rate with
                             | Adagrad _          -> Owl_log.warn "New Learning Rate: %f" nlr;
                                                     params.learning_rate <- Adagrad nlr
