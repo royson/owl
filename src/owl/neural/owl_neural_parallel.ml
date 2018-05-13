@@ -438,14 +438,14 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       plot_loss_time task.loss task.time; *) 
 
       (* Add/Remove workers for PASP barrier every epochs *)
-      let workers_changed = match Checkpoint.(state.current_batch mod (state.batches_per_epoch * 5) = 0) with
+      let workers_changed = match Checkpoint.(state.current_batch mod (state.batches_per_epoch * 1) = 0) with
         (* Progressive mode *)
-        | true  -> E.add_workers (E.progressive_num ())
         (* Capricious mode *)
-(*         | true  -> let b  = Owl_stats.uniform_int_rvs ~a:0 ~b:1 in
+        | true  -> let b  = Owl_stats.uniform_int_rvs ~a:0 ~b:1 in
                    let cw = Owl_stats.uniform_int_rvs ~a:1 ~b:18 in
-                   if b = 1 then E.add_workers cw else E.remove_workers cw *)
+                   if b = 1 then E.add_workers cw else E.remove_workers cw
         | false -> false
+        (* | true  -> E.add_workers (E.progressive_num ()) *)
       in
 
       (* Detect if workers changed *)
@@ -469,7 +469,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
                     | Stochastic  -> params.batch <- Mini nbs
                     | Full        -> ()
                     in
-                    E.set (string_of_int task.sid ^ "current_bs") params.batch
+                    E.set (string_of_int task.sid ^ "current_bs") params.batch;
 
                     (* Decay learning rate *)
 (*                  let lr = base_lr task in
@@ -480,15 +480,15 @@ module Make (M : ModelSig) (E : EngineSig) = struct
                     Owl_log.warn "Worker count changed to %i" w';
                     (*Owl_log.warn "Set decay duration to %i batches" (d * 20);*)
                     let d = float_of_int d in
-                    let nlr = lr *. (exp (-0.1 *. d)) in
- *)(*                  Owl_log.warn "New Learning Rate: %f" nlr;
+                    let nlr = lr *. (exp (-0.1 *. d)) in*)
+                    Owl_log.warn "New Learning Rate: %f" nlr;
                     match params.learning_rate with
                     | Adagrad _          -> params.learning_rate <- Adagrad nlr
                     | Const _            -> params.learning_rate <- Const nlr
                     | AdaptiveRev _      -> params.learning_rate <- AdaptiveRev nlr
                     | AdaDelay _         -> params.learning_rate <- AdaDelay nlr
                     | DelayComp (_, v, m)-> params.learning_rate <- DelayComp (nlr, v, m)
-                    | _                  -> () *)
+                    | _                  -> ()
                     (* Change momentum. Doesn't work with adaptive learning algos. *)
                     (* let w = E.progressive_num () in
                     let tm = total_momentum task in
