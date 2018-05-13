@@ -623,7 +623,11 @@ module Make
 
     (* init new or continue previous state of optimisation process *)
     let state = match state with
-      | Some state -> state
+      | Some state -> let batches_per_epoch = Batch.batches_ps params.batch x_size in
+                      let batches = (float_of_int batches_per_epoch) *. params.epochs |> int_of_float in
+                      Checkpoint.(state.batches_per_epoch <- batches_per_epoch);
+                      Checkpoint.(state.batches <- batches);
+                      state
       | None       -> (
           let batches_per_epoch = Batch.batches_ps params.batch x_size in
           let state = Checkpoint.init_state batches_per_epoch params.epochs in

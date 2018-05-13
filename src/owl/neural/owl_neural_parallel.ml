@@ -30,7 +30,7 @@ module type EngineSig = sig
 
   val register_barrier : (param_context ref -> int * (string list)) -> unit
 
-  val register_schedule : ('a list -> ('a * ('b * ('c * 'd)) list) list) -> unit
+  val register_schedule : ('a list -> ('a * ('b * ('c * 'd * 'e)) list) list) -> unit
 
   val register_pull : (string -> ('a * ('b * 'c)) list -> ('a * 'd) list) -> unit
 
@@ -265,13 +265,12 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     unpack_flt Maths.(F 1. - (F 1. / F (float_of_int num_of_workers)))
 
 
-  (* for batch_size for PASP *)
+  (* base batch_size for PASP *)
   let base_bs task =
     let params = task.server_params in
     let k = (string_of_int task.sid ^ "base_bs") in
     try E.get k |> fst
     with Not_found -> (
-      Owl_log.warn "initialize BS";
       let bs = match params.batch with
                             | Sample b           -> b 
                             | Mini b             -> b
@@ -279,6 +278,16 @@ module Make (M : ModelSig) (E : EngineSig) = struct
                             | Full               -> 0
       in
       E.set k bs;
+      E.get k |> fst;
+    )
+
+  (* current batch_size for PASP *)
+  let current_bs task =
+    let params = task.server_params in
+    let k = (string_of_int task.sid ^ "current_bs") in
+    try E.get k |> fst
+    with Not_found -> (
+      E.set k params.batch;
       E.get k |> fst;
     )
 
@@ -345,6 +354,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     (* get model, if none then init locally *)
     let model = local_model task in
     let batch_no = task.schedule_no in
+    let cb = current_bs task in
     (* If AdaptiveRevision, record total gradient for worker before schedule.
        If AdaDelay, record current iteration *)
     let tasks = List.mapi (fun i x ->
@@ -356,7 +366,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       | DelayComp _     -> E.set (x ^ "model") (M.mkpar model)
       | _               -> () in
       E.set (x ^ "time") (Unix.gettimeofday ());
-      (x, [(task.sid, (model, batch_no + i))])
+      (x, [(task.sid, (model, batch_no + i, cb))])
     ) workers
     in
     task.schedule_no <- batch_no + (List.length tasks);
@@ -453,11 +463,13 @@ module Make (M : ModelSig) (E : EngineSig) = struct
                     let nlr = lr *. (exp (-0.075 *. d)) in
                     let nbs = bs *. (lr /. nlr) |> int_of_float in
                     Owl_log.warn "New Batch Size %i" nbs;
-                    match params.batch with
+                    let _ = match params.batch with
                     | Sample _    -> params.batch <- Sample nbs
                     | Mini _      -> params.batch <- Mini nbs
                     | Stochastic  -> params.batch <- Mini nbs
                     | Full        -> ()
+                    in
+                    E.set (string_of_int task.sid ^ "current_bs") params.batch
 
                     (* Decay learning rate *)
 (*                  let lr = base_lr task in
@@ -520,14 +532,19 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       (k, model)
     ) vars
 
-
   let push task id vars =
     (* there should be only one item in list *)
     List.map (fun (k, v) ->
-      let model, t = v in
+      let model, t, bs = v in
       let start_t = Unix.gettimeofday () in
+      task.client_params.batch <- bs;
       (* start local training *)
       let params = task.client_params in
+      let _ = match params.batch with
+      | Mini b -> Owl_log.warn "calculating with Mini %i" b 
+      | Sample b -> Owl_log.warn "calculating with Sample %i" b
+      | _ -> ()
+      in
       let x = task.train_x in
       let y = task.train_y in
       let grad, loss = M.calculate_gradient ~params ~init_model:false model x y t in
