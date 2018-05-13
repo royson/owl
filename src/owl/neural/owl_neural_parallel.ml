@@ -469,26 +469,26 @@ module Make (M : ModelSig) (E : EngineSig) = struct
                     | Stochastic  -> params.batch <- Mini nbs
                     | Full        -> ()
                     in
-                    E.set (string_of_int task.sid ^ "current_bs") params.batch
+                    E.set (string_of_int task.sid ^ "current_bs") params.batch;
 
                     (* Decay learning rate *)
 (*                  let lr = base_lr task in
                     let w  = base_workers task in
                     let w' = E.progressive_num () in
                     let d  = (w' - w) in
-                    (*E.set (string_of_int task.sid ^ "decay_duration") (d * 20);*)
+                    E.set (string_of_int task.sid ^ "decay_duration") (d * 20);
                     Owl_log.warn "Worker count changed to %i" w';
                     (*Owl_log.warn "Set decay duration to %i batches" (d * 20);*)
                     let d = float_of_int d in
                     let nlr = lr *. (exp (-0.1 *. d)) in
-                    Owl_log.warn "New Learning Rate: %f" nlr;
+ *)                 Owl_log.warn "New Learning Rate: %f" nlr;
                     match params.learning_rate with
                     | Adagrad _          -> params.learning_rate <- Adagrad nlr
                     | Const _            -> params.learning_rate <- Const nlr
                     | AdaptiveRev _      -> params.learning_rate <- AdaptiveRev nlr
                     | AdaDelay _         -> params.learning_rate <- AdaDelay nlr
                     | DelayComp (_, v, m)-> params.learning_rate <- DelayComp (nlr, v, m)
-                    | _                  -> () *)
+                    | _                  -> ()
                     (* Change momentum. Doesn't work with adaptive learning algos. *)
                     (* let w = E.progressive_num () in
                     let tm = total_momentum task in
@@ -543,7 +543,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       let _ = match params.batch with
       | Mini b -> Owl_log.warn "calculating with Mini %i" b 
       | Sample b -> Owl_log.warn "calculating with Sample %i" b
-      | _ -> ()
+      | _ -> Owl_log.warn "SIMI SAI"
       in
       let x = task.train_x in
       let y = task.train_y in
