@@ -271,6 +271,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     let k = (string_of_int task.sid ^ "base_bs") in
     try E.get k |> fst
     with Not_found -> (
+      Owl_log.warn "initialize BS";
       let bs = match params.batch with
                             | Sample b           -> b 
                             | Mini b             -> b
@@ -377,6 +378,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       (* let _ = total_momentum task in  *)
       let _ = base_workers task in
       let _ = base_bs task in
+      let _ = base_lr task in
       (* Calculate delay for revised learning rate *)
       let delay = match params.learning_rate with
       | AdaDelay _ -> let iter = local_iteration task in
@@ -440,13 +442,16 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       let _ = match workers_changed with
         | false ->  ()
         | true  ->  (* Increase batch size *)
-                    let bs = base_bs task in
+                    let bs = base_bs task |> float_of_int in
+                    let lr = base_lr task in
+                    Owl_log.warn "Base BS: %f" bs;
                     let w = base_workers task in
                     let w' = E.progressive_num () in
                     let d = (w' - w) in
                     Owl_log.warn "Worker count changed to %i" w';
                     let d = float_of_int d in
-                    let nbs = bs *. (exp (-0.075 *. d)) |> int_of_float in
+                    let nlr = lr *. (exp (-0.075 *. d)) in
+                    let nbs = bs *. (lr /. nlr) |> int_of_float in
                     Owl_log.warn "New Batch Size %i" nbs;
                     match params.batch with
                     | Sample _    -> params.batch <- Sample nbs
