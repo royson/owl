@@ -426,9 +426,9 @@ module Make (M : ModelSig) (E : EngineSig) = struct
                     let w  = base_workers task in
                     let w' = E.progressive_num () in
                     let d  = (w' - w) |> float_of_int in
-                    E.set (string_of_int task.sid ^ "decay_duration") (w' * 15);
+                    E.set (string_of_int task.sid ^ "decay_duration") (d * 15);
                     Owl_log.warn "Worker count changed to %i" w';
-                    Owl_log.warn "Set decay duration to %i batches" (w' * 15);
+                    Owl_log.warn "Set decay duration to %i batches" (d * 15);
                     let nlr = lr *. (exp (-0.1 *. d)) in
                     match params.learning_rate with
                     | Adagrad _          -> Owl_log.warn "New Learning Rate: %f" nlr;
