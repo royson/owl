@@ -460,7 +460,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
                     let d = (w' - w) in
                     Owl_log.warn "Worker count changed to %i" w';
                     let d = float_of_int d in
-                    let nlr = lr *. (exp (-0.1 *. d)) in
+                    let nlr = lr *. (exp (-0.075 *. d)) in
                     let nbs = bs *. (lr /. nlr) |> int_of_float in
                     Owl_log.warn "New Batch Size %i" nbs;
                     let _ = match params.batch with
@@ -469,7 +469,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
                     | Stochastic  -> params.batch <- Mini nbs
                     | Full        -> ()
                     in
-                    E.set (string_of_int task.sid ^ "current_bs") params.batch;
+                    E.set (string_of_int task.sid ^ "current_bs") params.batch
 
                     (* Decay learning rate *)
 (*                  let lr = base_lr task in
@@ -481,14 +481,14 @@ module Make (M : ModelSig) (E : EngineSig) = struct
                     (*Owl_log.warn "Set decay duration to %i batches" (d * 20);*)
                     let d = float_of_int d in
                     let nlr = lr *. (exp (-0.1 *. d)) in
- *)                 Owl_log.warn "New Learning Rate: %f" nlr;
+ *)(*                  Owl_log.warn "New Learning Rate: %f" nlr;
                     match params.learning_rate with
                     | Adagrad _          -> params.learning_rate <- Adagrad nlr
                     | Const _            -> params.learning_rate <- Const nlr
                     | AdaptiveRev _      -> params.learning_rate <- AdaptiveRev nlr
                     | AdaDelay _         -> params.learning_rate <- AdaDelay nlr
                     | DelayComp (_, v, m)-> params.learning_rate <- DelayComp (nlr, v, m)
-                    | _                  -> ()
+                    | _                  -> () *)
                     (* Change momentum. Doesn't work with adaptive learning algos. *)
                     (* let w = E.progressive_num () in
                     let tm = total_momentum task in
