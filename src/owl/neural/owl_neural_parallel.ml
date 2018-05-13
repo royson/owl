@@ -540,11 +540,6 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       task.client_params.batch <- bs;
       (* start local training *)
       let params = task.client_params in
-      let _ = match params.batch with
-      | Mini b -> Owl_log.warn "calculating with Mini %i" b 
-      | Sample b -> Owl_log.warn "calculating with Sample %i" b
-      | _ -> Owl_log.warn "SIMI SAI"
-      in
       let x = task.train_x in
       let y = task.train_y in
       let grad, loss = M.calculate_gradient ~params ~init_model:false model x y t in
