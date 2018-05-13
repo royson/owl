@@ -376,7 +376,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       (* Hotfix: initialize total_momentum. Might need create pre-start function *)
       (* let _ = total_momentum task in  *)
       let _ = base_workers task in
-      let _ = base_lr task in
+      let _ = base_bs task in
       (* Calculate delay for revised learning rate *)
       let delay = match params.learning_rate with
       | AdaDelay _ -> let iter = local_iteration task in
