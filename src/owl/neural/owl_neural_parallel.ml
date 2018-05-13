@@ -429,7 +429,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
                     E.set (string_of_int task.sid ^ "decay_duration") (d * 15);
                     Owl_log.warn "Worker count changed to %i" w';
                     Owl_log.warn "Set decay duration to %i batches" (d * 15);
-                    let d = float_of_int d;
+                    let d = float_of_int d in
                     let nlr = lr *. (exp (-0.1 *. d)) in
                     match params.learning_rate with
                     | Adagrad _          -> Owl_log.warn "New Learning Rate: %f" nlr;
