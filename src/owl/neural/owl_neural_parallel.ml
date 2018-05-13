@@ -426,9 +426,9 @@ module Make (M : ModelSig) (E : EngineSig) = struct
                     let w  = base_workers task in
                     let w' = E.progressive_num () in
                     let d  = (w' - w) in
-                    E.set (string_of_int task.sid ^ "decay_duration") (d * 15);
+                    E.set (string_of_int task.sid ^ "decay_duration") (d * 20);
                     Owl_log.warn "Worker count changed to %i" w';
-                    Owl_log.warn "Set decay duration to %i batches" (d * 15);
+                    Owl_log.warn "Set decay duration to %i batches" (d * 20);
                     let d = float_of_int d in
                     let nlr = lr *. (exp (-0.1 *. d)) in
                     match params.learning_rate with
@@ -459,10 +459,11 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       (* Detect if decay expired *)
       let decay = decay_duration task in
       let _ = match (decay <> 0 
-                    && Checkpoint.(state.current_batch mod (state.batches_per_epoch * 5 + decay) = 0)) with
+                    && Checkpoint.(state.current_batch mod (state.batches_per_epoch * 1 + decay) = 0)) with
         | false -> ()
         | true -> let lr = base_lr task in
                   Owl_log.warn "Decay expired..";
+                  E.set (string_of_int task.sid ^ "decay_duration") 0;
                   match params.learning_rate with
                   | Adagrad _          -> Owl_log.warn "New Learning Rate: %f" lr;
                                           params.learning_rate <- Adagrad lr
