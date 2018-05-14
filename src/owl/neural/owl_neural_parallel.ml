@@ -237,7 +237,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
   let local_model task =
     try E.get task.sid |> fst
     with Not_found -> (
-      Owl_log.warn "set up first model";
+      Owl_log.debug "set up first model";
       M.init task.model;
       E.set task.sid task.model;
       E.get task.sid |> fst;
@@ -331,8 +331,8 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       | None       -> 0.0
       in
       E.set k (explicit_momentum +. implicit_momentum);
-      Owl_log.warn "explicit_momentum: %f" explicit_momentum;
-      Owl_log.warn "implicit_momentum: %f" implicit_momentum;
+      Owl_log.debug "explicit_momentum: %f" explicit_momentum;
+      Owl_log.debug "implicit_momentum: %f" implicit_momentum;
       E.get k |> fst;
     )
 
@@ -439,14 +439,14 @@ module Make (M : ModelSig) (E : EngineSig) = struct
 
       let current_progression = E.progressive_num () in
       (* Add/Remove workers for PASP barrier every epochs *)
-      let workers_changed = match Checkpoint.(state.current_batch mod (state.batches_per_epoch * 1) = 0) with
+      let workers_changed = match Checkpoint.(state.current_batch mod (state.batches_per_epoch * 2) = 0) with
         | false -> false
         | true  -> let b  = Owl_stats.uniform_int_rvs ~a:0 ~b:1 in
-                   let cw = Owl_stats.uniform_int_rvs ~a:1 ~b:13 in
+                   let cw = Owl_stats.uniform_int_rvs ~a:1 ~b:8 in
                    match b with
-                   | 1 -> Owl_log.warn "%i workers attempting to join." cw;
+                   | 1 -> Owl_log.debug "%i workers attempting to join." cw;
                           E.add_workers cw
-                   | _ -> Owl_log.warn "%i workers attempting to leave." cw;
+                   | _ -> Owl_log.debug "%i workers attempting to leave." cw;
                           E.remove_workers cw
         (* Progressive mode *)
         (* | true  -> E.add_workers current_progression *)
@@ -459,15 +459,15 @@ module Make (M : ModelSig) (E : EngineSig) = struct
         | true  ->  (* Increase batch size *)
                     let bs = base_bs task |> float_of_int in
                     let lr = base_lr task in
-                    Owl_log.warn "Base BS: %f" bs;
+                    Owl_log.debug "Base BS: %f" bs;
                     let w = base_workers task in
                     let w' = E.progressive_num () in
                     let d = (w' - w) in
-                    Owl_log.warn "Worker count changed to %i" w';
+                    Owl_log.debug "Worker count changed to %i" w';
                     let d = float_of_int d in
                     let nlr = lr *. (exp (-0.2 *. d)) in
                     let nbs = bs *. (lr /. nlr) |> int_of_float in
-                    Owl_log.warn "New Batch Size %i" nbs;
+                    Owl_log.debug "New Batch Size %i" nbs;
                     (* Check if new batch size affects training *)
                     let batches_per_epoch = match params.batch with
                           | Full       -> 1
@@ -476,9 +476,9 @@ module Make (M : ModelSig) (E : EngineSig) = struct
                           | Stochastic -> xs
                           in
                     let batches = (float_of_int batches_per_epoch) *. params.epochs |> int_of_float in
-                    Owl_log.warn "Iterations: %i" batches;
+                    Owl_log.debug "Iterations: %i" batches;
                     match Checkpoint.(state.current_batch) >= batches with
-                    | true  -> Owl_log.warn "Batch size too big. Removing recently added workers..";
+                    | true  -> Owl_log.debug "Batch size too big. Removing recently added workers..";
                                let _ = E.remove_workers (w' - current_progression) in
                                ()
                     | false ->
@@ -496,11 +496,11 @@ module Make (M : ModelSig) (E : EngineSig) = struct
                       let w' = E.progressive_num () in
                       let d  = (w' - w) in
                       E.set (string_of_int task.sid ^ "decay_duration") (d * 20);
-                      Owl_log.warn "Worker count changed to %i" w';
-                      (*Owl_log.warn "Set decay duration to %i batches" (d * 20);*)
+                      Owl_log.debug "Worker count changed to %i" w';
+                      (*Owl_log.debug "Set decay duration to %i batches" (d * 20);*)
                       let d = float_of_int d in
                       let nlr = lr *. (exp (-0.1 *. d)) in*)
-                      Owl_log.warn "New Learning Rate: %f" nlr;
+                      Owl_log.debug "New Learning Rate: %f" nlr;
                       match params.learning_rate with
                       | Adagrad _          -> params.learning_rate <- Adagrad nlr
                       | Const _            -> params.learning_rate <- Const nlr
@@ -513,9 +513,9 @@ module Make (M : ModelSig) (E : EngineSig) = struct
                       let tm = total_momentum task in
                       let im = calc_implicit_momentum w in
                       let em = (tm -. im) in
-                      Owl_log.warn "Worker count changed to %i" w;
-                      Owl_log.warn "Total momentum: %f. New implicit momentum: %f." tm im;
-                      Owl_log.warn "Setting new explicit momentum: %f." em;
+                      Owl_log.debug "Worker count changed to %i" w;
+                      Owl_log.debug "Total momentum: %f. New implicit momentum: %f." tm im;
+                      Owl_log.debug "Setting new explicit momentum: %f." em;
                       match params.momentum with
                         | Standard _ -> params.momentum <- Momentum.Standard em
                         | Nesterov _ -> params.momentum <- Momentum.Nesterov em
@@ -527,18 +527,18 @@ module Make (M : ModelSig) (E : EngineSig) = struct
                     && Checkpoint.(state.current_batch mod (state.batches_per_epoch * 1 + decay) = 0)) with
         | false -> ()
         | true -> let lr = base_lr task in
-                  Owl_log.warn "Decay expired..";
+                  Owl_log.debug "Decay expired..";
                   E.set (string_of_int task.sid ^ "decay_duration") 0;
                   match params.learning_rate with
-                  | Adagrad _          -> Owl_log.warn "New Learning Rate: %f" lr;
+                  | Adagrad _          -> Owl_log.debug "New Learning Rate: %f" lr;
                                           params.learning_rate <- Adagrad lr
-                  | Const _            -> Owl_log.warn "New Learning Rate: %f" lr;
+                  | Const _            -> Owl_log.debug "New Learning Rate: %f" lr;
                                           params.learning_rate <- Const lr
-                  | AdaptiveRev _      -> Owl_log.warn "New Learning Rate: %f" lr;
+                  | AdaptiveRev _      -> Owl_log.debug "New Learning Rate: %f" lr;
                                           params.learning_rate <- AdaptiveRev lr
-                  | AdaDelay _         -> Owl_log.warn "New Learning Rate: %f" lr;
+                  | AdaDelay _         -> Owl_log.debug "New Learning Rate: %f" lr;
                                           params.learning_rate <- AdaDelay lr
-                  | DelayComp (_, v, m)-> Owl_log.warn "New Learning Rate: %f" lr;
+                  | DelayComp (_, v, m)-> Owl_log.debug "New Learning Rate: %f" lr;
                                           params.learning_rate <- DelayComp (lr, v, m)
                   | _                  -> ()
       in *)
