@@ -442,11 +442,11 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       let workers_changed = match Checkpoint.(state.current_batch mod (state.batches_per_epoch * 1) = 0) with
         | false -> false
         | true  -> let b  = Owl_stats.uniform_int_rvs ~a:0 ~b:1 in
-                   let cw = Owl_stats.uniform_int_rvs ~a:1 ~b:18 in
+                   let cw = Owl_stats.uniform_int_rvs ~a:1 ~b:13 in
                    match b with
                    | 1 -> Owl_log.warn "%i workers attempting to join." cw;
                           E.add_workers cw
-                   | _ -> Owl_log.warn "%i workers attempting to join." cw;
+                   | _ -> Owl_log.warn "%i workers attempting to leave." cw;
                           E.remove_workers cw
         (* Progressive mode *)
         (* | true  -> E.add_workers current_progression *)
@@ -465,7 +465,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
                     let d = (w' - w) in
                     Owl_log.warn "Worker count changed to %i" w';
                     let d = float_of_int d in
-                    let nlr = lr *. (exp (-0.075 *. d)) in
+                    let nlr = lr *. (exp (-0.15 *. d)) in
                     let nbs = bs *. (lr /. nlr) |> int_of_float in
                     Owl_log.warn "New Batch Size %i" nbs;
                     (* Check if new batch size affects training *)
