@@ -439,7 +439,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
 
       let current_progression = E.progressive_num () in
       (* Add/Remove workers for PASP barrier every epochs *)
-      let workers_changed = match Checkpoint.(state.current_batch mod (state.batches_per_epoch * 1) = 0) with
+      let workers_changed = match Checkpoint.(state.current_batch mod (state.batches_per_epoch / 5) = 0) with
         | true -> E.remove_workers 1
         | false -> false
         (* Progressive mode *)
@@ -460,7 +460,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
                     let lr = base_lr task in
                     Owl_log.warn "Base BS: %f" bs;
                     let w = base_workers task in
-                    let w' = current_progression in
+                    let w' = E.progressive_num () in
                     let d = (w' - w) in
                     Owl_log.warn "Worker count changed to %i" w';
                     let d = float_of_int d in
@@ -478,7 +478,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
                     Owl_log.warn "Iterations: %i" batches;
                     match Checkpoint.(state.current_batch) >= batches with
                     | true  -> Owl_log.warn "Batch size too big. Removing recently added workers..";
-                               let _ = E.remove_workers ((E.progressive_num ()) - current_progression) in
+                               let _ = E.remove_workers (w' - current_progression) in
                                ()
                     | false ->
                       let _ = match params.batch with
@@ -492,7 +492,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
                       (* Decay learning rate *)
                   (*  let lr = base_lr task in
                       let w  = base_workers task in
-                      let w' = current_progression in
+                      let w' = E.progressive_num () in
                       let d  = (w' - w) in
                       E.set (string_of_int task.sid ^ "decay_duration") (d * 20);
                       Owl_log.warn "Worker count changed to %i" w';
@@ -508,7 +508,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
                       | DelayComp (_, v, m)-> params.learning_rate <- DelayComp (nlr, v, m)
                       | _                  -> ()
                       (* Change momentum. Doesn't work with adaptive learning algos. *)
-                      (* let w = current_progression in
+                      (* let w = E.progressive_num () in
                       let tm = total_momentum task in
                       let im = calc_implicit_momentum w in
                       let em = (tm -. im) in
