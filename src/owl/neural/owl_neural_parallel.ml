@@ -83,11 +83,15 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     mutable train_size         : int;        (* Training data size for batch calculation *)
     mutable test_x             : t;          
     mutable test_y             : t;
+(*     mutable val_x              : t;
+    mutable val_y              : t; *)
     mutable start_at           : float;      (* Time training starts *)
     mutable schedule_no        : int;        (* Number of task scheduled. For Mini-Batch *)
     (* For Graph Plots *)
     mutable loss               : float list; (* Losses received *)
     mutable time               : float list; (* Total time executed by task *)
+    (* For early stopping *)
+    (* mutable val_loss    : float list; *)
   }
 
   type client_task = {
@@ -232,6 +236,9 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     let res = (accu /. (float_of_int (m * 5))) in
     Owl_log.info "Accuracy on test set: %f" res;
     write_float_to_file "result.txt" res
+
+  (* let validate_network task  *)
+  (* TODO *)
 
   (* retrieve local model at parameter server, init if none *)
   let local_model task =
@@ -579,6 +586,11 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     let sid = Owl_stats.uniform_int_rvs ~a:0 ~b:max_int in
     let cid = Owl_stats.uniform_int_rvs ~a:0 ~b:max_int in
 
+    (* Split training and validation data to 85:15 *)
+    (* let open Owl_dense_ndarray.S in *)
+    
+
+
     let server_task = make_server_task sid params nn x tx ty in
     let client_task = make_client_task cid params x y in 
     (* register sched/push/pull/stop/barrier *)
@@ -589,8 +601,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     E.start ~barrier:E.PASP jid url
 
 
-  let train ?params nn x y tx ty jid url = train_generic ?params nn (Arr x) (Arr y) 
-                                            (Arr tx) (Arr ty) jid url
+  let train ?params nn x y tx ty jid url = train_generic ?params nn x y tx ty jid url
 
 
 end
