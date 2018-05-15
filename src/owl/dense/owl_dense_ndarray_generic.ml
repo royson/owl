@@ -797,7 +797,7 @@ let scalar_sub a x =
 let scalar_mul a x =
   let x = copy x in
   let x' = flatten x |> array1_of_genarray in
-  Owl_cblas.scal (numel x) a x' 1;
+  Owl_cblas_basic.scal (numel x) a x' 1;
   x
 
 let scalar_div a x =
@@ -1724,7 +1724,7 @@ let conv2d ?(padding=SAME) input kernel stride =
 
 
 (* transpose 2d convolution *)
-let conv2d_transpose ?(padding=SAME) input kernel stride =
+let transpose_conv2d ?(padding=SAME) input kernel stride =
   assert (num_dims input = 4);
   assert (num_dims kernel = 4);
   assert (Array.length stride = 2);
@@ -1747,7 +1747,7 @@ let conv2d_transpose ?(padding=SAME) input kernel stride =
   let row_in_stride = 1 in
 
   let output_cols, output_rows =
-    Owl_utils.calc_conv2d_transpose_output_shape padding input_cols input_rows kernel_cols kernel_rows row_stride col_stride
+    Owl_utils.calc_transpose_conv2d_output_shape padding input_cols input_rows kernel_cols kernel_rows row_stride col_stride
   in
   let output = empty (kind input) [|batches; output_cols; output_rows; out_channel|] in
 
@@ -1840,8 +1840,8 @@ let conv2d_backward_kernel input kernel stride output' =
 
   kernel'
 
-(* gradient of conv2d_transpose w.r.t the kernel *)
-let conv2d_transpose_backward_kernel input kernel stride output' =
+(* gradient of transpose_conv2d w.r.t the kernel *)
+let transpose_conv2d_backward_kernel input kernel stride output' =
   assert (num_dims input = 4);
   assert (num_dims kernel = 4);
   assert (num_dims output' = 4);
@@ -1880,8 +1880,8 @@ let conv2d_transpose_backward_kernel input kernel stride output' =
   kernel'
 
 
-(* gradient of conv2d_transpose w.r.t the input *)
-let conv2d_transpose_backward_input  input kernel stride output' =
+(* gradient of transpose_conv2d w.r.t the input *)
+let transpose_conv2d_backward_input  input kernel stride output' =
   assert (num_dims input = 4);
   assert (num_dims kernel = 4);
   assert (num_dims output' = 4);
@@ -3489,10 +3489,10 @@ let dot x1 x2 =
   let b = flatten x2 |> Bigarray.array1_of_genarray in
   let c = flatten x3 |> Bigarray.array1_of_genarray in
 
-  let layout = Owl_cblas.CblasRowMajor in
-  let transa = Owl_cblas.CblasNoTrans in
-  let transb = Owl_cblas.CblasNoTrans in
-  Owl_cblas.gemm layout transa transb m n k alpha a k b n beta c n;
+  let layout = Owl_cblas_basic.CblasRowMajor in
+  let transa = Owl_cblas_basic.CblasNoTrans in
+  let transb = Owl_cblas_basic.CblasNoTrans in
+  Owl_cblas_basic.gemm layout transa transb m n k alpha a k b n beta c n;
   x3
 
 
