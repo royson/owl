@@ -587,21 +587,29 @@ module Make
     let bach_fun = Batch.run params.batch in
     let loss_fun = Loss.run params.loss in
     let regl_fun = Regularisation.run params.regularisation in
-    let clip_fun = Clipping.run params.clipping in    
+    let clip_fun = Clipping.run params.clipping in
+    Owl_log.warn "Bach";    
     let xt, yt = bach_fun x y t in
-    let yt', ws = forward xt in
+    Owl_log.warn "Forward";
+    let yt', ws = forward xt i
+    Owl_log.warn "Loss";
     let loss = loss_fun yt yt' in
     (* take the mean of the loss *)
+    Owl_log.warn "Mean Loss";
     let loss = Maths.(loss / (F (Mat.row_num yt |> float_of_int))) in
     (* add regularisation term if necessary *)
+    Owl_log.warn "Reg";
     let reg = match params.regularisation <> Regularisation.None with
       | true  -> Owl_utils.aarr_fold (fun a w -> Maths.(a + regl_fun w)) (F 0.) ws
       | false -> F 0.
     in
     let loss = Maths.(loss + reg) in
+    Owl_log.warn "Backward";
     let _, gs' = backward loss in
+    Owl_log.warn "Primal"
     let loss = primal' loss in
     (* clip the gradient if necessary *)
+    Owl_log.warn "Clip"
     let gs' = Owl_utils.aarr_map clip_fun gs' in
     (* Return loss and gs' *)
     gs', loss
