@@ -478,8 +478,8 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       E.set (string_of_int task.sid ^ "finish") Checkpoint.(state.stop); 
 
       let current_progression = E.progressive_num () in
-      (* Add/Remove workers for PASP barrier every epochs *)
-      let workers_changed = match Checkpoint.(state.current_batch mod (state.batches_per_epoch / 2) = 0) with
+      (* Add/Remove workers for PASP barrier every 100 iterations *)
+      let workers_changed = match Checkpoint.(state.current_batch mod 100 = 0) with
         | false -> false
         | true  -> let b  = Owl_stats.uniform_int_rvs ~a:0 ~b:1 in
                    let cw = Owl_stats.uniform_int_rvs ~a:1 ~b:8 in
@@ -505,7 +505,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
                     let d = (w' - w) in
                     Owl_log.debug "Worker count changed to %i" w';
                     let d = float_of_int d in
-                    let nlr = lr *. (exp (-0.2 *. d)) in
+                    let nlr = lr *. (exp (-0.25 *. d)) in
                     let nbs = bs *. (lr /. nlr) |> int_of_float in
                     Owl_log.debug "New Batch Size %i" nbs;
                     (* Check if new batch size affects training *)
