@@ -623,11 +623,11 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     in
     let sid = Owl_stats.uniform_int_rvs ~a:0 ~b:max_int in
     let cid = Owl_stats.uniform_int_rvs ~a:0 ~b:max_int in
-    Owl_log.warn "Initialize: %i" cid;
+
     (* Split training and validation data to 80:20 *)
     let open Owl_dense_ndarray.S in
-    let x = split ~axis:0 [|8000;2000|] x in
-    let y = split ~axis:0 [|8000;2000|] y in
+    let x = split ~axis:0 [|8000;2000|] (unpack_arr x)  in
+    let y = split ~axis:0 [|8000;2000|] (unpack_arr y) in
     let vx = (Arr x.(1)) in
     let x = (Arr x.(0)) in 
     let vy = (Arr y.(1)) in
@@ -643,7 +643,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     E.start ~barrier:E.PASP jid url
 
 
-  let train ?params nn x y tx ty jid url = train_generic ?params nn x y (Arr tx) (Arr ty) jid url
+  let train ?params nn x y tx ty jid url = train_generic ?params nn (Arr x) (Arr y) (Arr tx) (Arr ty) jid url
 
 
 end
