@@ -621,7 +621,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     in
     let sid = Owl_stats.uniform_int_rvs ~a:0 ~b:max_int in
     let cid = Owl_stats.uniform_int_rvs ~a:0 ~b:max_int in
-
+    Owl_log.warn "Initialize: %i" cid;
     (* Split training and validation data to 80:20 *)
     let open Owl_dense_ndarray.S in
     let x = split ~axis:0 [|8000;2000|] x in
