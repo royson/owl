@@ -606,10 +606,10 @@ module Make
     let loss = Maths.(loss + reg) in
     Owl_log.warn "Backward";
     let _, gs' = backward loss in
-    Owl_log.warn "Primal"
+    Owl_log.warn "Primal";
     let loss = primal' loss in
     (* clip the gradient if necessary *)
-    Owl_log.warn "Clip"
+    Owl_log.warn "Clip";
     let gs' = Owl_utils.aarr_map clip_fun gs' in
     (* Return loss and gs' *)
     gs', loss
