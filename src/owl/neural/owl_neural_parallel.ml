@@ -602,6 +602,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       let params = task.client_params in
       let x = task.train_x in
       let y = task.train_y in
+      Owl_log.debug "Worker: %i" task.cid;
       let grad, loss = M.calculate_gradient ~params ~init_model:false model x y t in
       let result = (grad, loss) in
       write_float_to_file "computation.txt" (Unix.gettimeofday () -. start_t);
