@@ -589,6 +589,7 @@ module Make
     let regl_fun = Regularisation.run params.regularisation in
     let clip_fun = Clipping.run params.clipping in
     Owl_log.warn "Bach";    
+    Owl_log.warn "t: %i" t;
     let xt, yt = bach_fun x y t in
     Array.iter (Owl_log.info "xt: %i") (shape xt);
     Array.iter (Owl_log.info "yt: %i") (shape yt);
