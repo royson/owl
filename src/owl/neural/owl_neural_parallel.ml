@@ -482,7 +482,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
 
       let current_progression = E.progressive_num () in
       (* Add/Remove workers for PASP barrier every epochs *)
-      let workers_changed = match Checkpoint.(state.current_batch mod (state.batches_per_epoch * 2) = 0) with
+      let workers_changed = match Checkpoint.(state.current_batch mod (state.batches_per_epoch / 2) = 0) with
         | false -> false
         | true  -> let b  = Owl_stats.uniform_int_rvs ~a:0 ~b:1 in
                    let cw = Owl_stats.uniform_int_rvs ~a:1 ~b:8 in
@@ -604,7 +604,9 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       let params = task.client_params in
       let x = task.train_x in
       let y = task.train_y in
+      Owl_log.warn "%i Calculating gradient.." task.cid;
       let grad, loss = M.calculate_gradient ~params ~init_model:false model x y t in
+      Owl_log.warn "%i DONE!" task.cid;
       let result = (grad, loss) in
       write_float_to_file "computation.txt" (Unix.gettimeofday () -. start_t);
       (k, result)      
