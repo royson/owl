@@ -479,7 +479,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
 
       let current_progression = E.progressive_num () in
       (* Add/Remove workers for PASP barrier every 5 iterations *)
-      let workers_changed = match Checkpoint.(state.current_batch mod 5 = 0) with
+      let workers_changed = match Checkpoint.(state.current_batch mod 100 = 0) with
         | false -> false
         | true  -> let b  = Owl_stats.uniform_int_rvs ~a:0 ~b:1 in
                    let cw = Owl_stats.uniform_int_rvs ~a:1 ~b:8 in
