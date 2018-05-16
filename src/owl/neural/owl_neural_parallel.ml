@@ -246,11 +246,13 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     Owl_log.info "Accuracy on test set: %f" res;
     write_float_to_file "result.txt" res
 
-  let validate_model task epoch = 
+  let validate_model task i = 
+    Owl_log.debug "Validation iteration: %i" i;
     let x = task.val_x in
     let y = task.val_y in
-    let xt, yt = (Batch.run task.server_params.batch) x y epoch in
-    let yt', _ = (M.forward task.model) xt  in
+    let model = M.copy task.model in
+    let xt, yt = (Batch.run task.server_params.batch) x y i in
+    let yt', _ = (M.forward model) xt  in
     let loss = (Loss.run task.server_params.loss) yt yt' in
     (* take the mean of the loss *)
     let loss = Maths.(loss / (F (Mat.row_num yt |> float_of_int))) in
@@ -481,14 +483,13 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       (* Add/Remove workers for PASP barrier every 5 iterations *)
       let workers_changed = match Checkpoint.(state.current_batch mod 100 = 0) with
         | false -> false
-        | true -> E.remove_workers 8
-(*         | true  -> let b  = Owl_stats.uniform_int_rvs ~a:0 ~b:1 in
+        | true  -> let b  = Owl_stats.uniform_int_rvs ~a:0 ~b:1 in
                    let cw = Owl_stats.uniform_int_rvs ~a:1 ~b:8 in
                    match b with
                    | 1 -> Owl_log.debug "%i workers attempting to join." cw;
                           E.add_workers cw
                    | _ -> Owl_log.debug "%i workers attempting to leave." cw;
-                          E.remove_workers cw *)
+                          E.remove_workers cw
         (* Progressive mode *)
         (* | true  -> E.add_workers current_progression *)
         (* Capricious mode *)

@@ -588,14 +588,10 @@ module Make
     let loss_fun = Loss.run params.loss in
     let regl_fun = Regularisation.run params.regularisation in
     let clip_fun = Clipping.run params.clipping in
-    Owl_log.warn "Bach";    
-    Owl_log.warn "t: %i" t;
     let xt, yt = bach_fun x y t in
     Array.iter (Owl_log.info "xt: %i") (shape xt);
     Array.iter (Owl_log.info "yt: %i") (shape yt);
-    Owl_log.warn "Forward";
     let yt', ws = forward xt in
-    Owl_log.warn "Loss";
     let loss = loss_fun yt yt' in
     (* take the mean of the loss *)
     let loss = Maths.(loss / (F (Mat.row_num yt |> float_of_int))) in
