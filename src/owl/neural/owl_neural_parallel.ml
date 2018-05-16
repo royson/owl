@@ -638,7 +638,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     E.register_pull (pull server_task);
     E.register_push (push client_task);
     E.register_stop (stop server_task);
-    E.start ~barrier:E.ASP jid url
+    E.start ~barrier:E.PASP jid url
 
 
   let train ?params nn x y tx ty jid url = train_generic ?params nn (Arr x) (Arr y) 

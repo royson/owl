@@ -589,8 +589,6 @@ module Make
     let regl_fun = Regularisation.run params.regularisation in
     let clip_fun = Clipping.run params.clipping in
     let xt, yt = bach_fun x y t in
-    Array.iter (Owl_log.info "xt: %i") (shape xt);
-    Array.iter (Owl_log.info "yt: %i") (shape yt);
     let yt', ws = forward xt in
     let loss = loss_fun yt yt' in
     (* take the mean of the loss *)
@@ -601,7 +599,6 @@ module Make
       | false -> F 0.
     in
     let loss = Maths.(loss + reg) in
-    Owl_log.warn "Backward";
     let _, gs' = backward loss in
     let loss = primal' loss in
     (* clip the gradient if necessary *)
