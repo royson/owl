@@ -591,7 +591,7 @@ module Make
     Owl_log.warn "Bach";    
     let xt, yt = bach_fun x y t in
     Owl_log.warn "Forward";
-    let yt', ws = forward xt i
+    let yt', ws = forward xt in
     Owl_log.warn "Loss";
     let loss = loss_fun yt yt' in
     (* take the mean of the loss *)
