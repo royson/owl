@@ -468,16 +468,18 @@ module Make (M : ModelSig) (E : EngineSig) = struct
         | true  ->  let vl = validate_model task (Checkpoint.(state.current_batch / (state.batches_per_epoch)) - 1) in
                     write_float_to_file "val_loss.txt" vl;
                     match task.lowest_val_loss <> 0. && vl >= task.lowest_val_loss with
-                      | true  ->  task.patience <- task.patience + 1;
-                                  if task.patience >= 10 then 
-                                    Owl_log.info "Early stopping..";
-                                    Checkpoint.(state.stop <- true)
+                      | true  ->  task.patience <- task.patience + 1
                       | false ->  M.save task.model "model";
                                   task.lowest_val_loss <- vl;
                                   task.patience <- 0
       in
 
       (* Determine if training ends *)
+      let _ = match task.patience >= 10 with 
+      | false -> ()
+      | true  -> Owl_log.info "Early stopping..";
+                 Checkpoint.(state.stop <- true)
+      in
       E.set (string_of_int task.sid ^ "finish") Checkpoint.(state.stop); 
 
       let current_progression = E.progressive_num () in
