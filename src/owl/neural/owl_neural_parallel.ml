@@ -95,7 +95,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     mutable loss               : float list; (* Losses received *)
     mutable time               : float list; (* Total time executed by task *)
     (* For early stopping *)
-    mutable last_val_loss      : float;
+    mutable lowest_val_loss      : float;
     mutable patience           : int;
   }
 
@@ -121,7 +121,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     schedule_no = 0;
     loss = [];
     time = [];
-    last_val_loss = 0.;
+    lowest_val_loss = 0.;
     patience = 0;
   }
 
@@ -467,12 +467,13 @@ module Make (M : ModelSig) (E : EngineSig) = struct
         | false ->  ()
         | true  ->  let vl = validate_model task (Checkpoint.(state.current_batch / (state.batches_per_epoch)) - 1) in
                     write_float_to_file "val_loss.txt" vl;
-                    match task.last_val_loss <> 0. && vl >= task.last_val_loss with
+                    match task.lowest_val_loss <> 0. && vl >= task.lowest_val_loss with
                       | true  ->  task.patience <- task.patience + 1;
-                                  task.last_val_loss <- vl;
-                                  if task.patience >= 5 then Checkpoint.(state.stop <- true)
+                                  if task.patience >= 10 then 
+                                    Owl_log.info "Early stopping..";
+                                    Checkpoint.(state.stop <- true)
                       | false ->  M.save task.model "model";
-                                  task.last_val_loss <- vl;
+                                  task.lowest_val_loss <- vl;
                                   task.patience <- 0
       in
 
