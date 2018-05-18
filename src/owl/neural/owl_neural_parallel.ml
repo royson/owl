@@ -482,7 +482,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       in
       E.set (string_of_int task.sid ^ "finish") Checkpoint.(state.stop); 
 
-      let current_progression = E.progressive_num () in
+(*       let current_progression = E.progressive_num () in
       (* Add/Remove workers for PASP barrier every 125 iterations *)
       let workers_changed = match Checkpoint.(state.current_batch mod 125 = 0) with
         | false -> false
@@ -498,7 +498,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
         (* Progressive mode *)
         (* | true  -> E.add_workers current_progression *)
       in
-
+ *)
       (* Detect if workers changed *)
 (*       let _ = match workers_changed with
         | false ->  ()
@@ -646,7 +646,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     E.register_pull (pull server_task);
     E.register_push (push client_task);
     E.register_stop (stop server_task);
-    E.start ~barrier:E.PASP jid url
+    E.start ~barrier:E.ASP jid url
 
 
   let train ?params nn x y tx ty jid url = train_generic ?params nn (Arr x) (Arr y) 
