@@ -488,7 +488,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
         | false -> false
         (* Capricious mode *)
         | true  -> let b  = Owl_stats.uniform_int_rvs ~a:0 ~b:1 in
-                   let cw = Owl_stats.uniform_int_rvs ~a:1 ~b:8 in
+                   let cw = Owl_stats.uniform_int_rvs ~a:1 ~b:18 in
                    match b with
                    | 1 -> Owl_log.debug "%i workers attempting to join." cw;
                           E.add_workers cw
