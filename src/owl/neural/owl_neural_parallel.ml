@@ -488,7 +488,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
         | false -> false
         (* Capricious mode *)
         | true  -> let b  = Owl_stats.uniform_int_rvs ~a:0 ~b:1 in
-                   let cw = Owl_stats.uniform_int_rvs ~a:1 ~b:18 in
+                   let cw = Owl_stats.uniform_int_rvs ~a:1 ~b:8 in
                    match b with
                    | 1 -> Owl_log.debug "%i workers attempting to join." cw;
                           E.add_workers cw
@@ -500,7 +500,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       in
 
       (* Detect if workers changed *)
-      let _ = match workers_changed with
+(*       let _ = match workers_changed with
         | false ->  ()
         | true  ->  (* Increase batch size *)
                     let bs = base_bs task |> float_of_int in
@@ -556,7 +556,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
                       | AdaDelay _         -> params.learning_rate <- AdaDelay nlr
                       | DelayComp (_, v, m)-> params.learning_rate <- DelayComp (nlr, v, m)
                       | _                  -> ()
-
+ *)
 
 
                       (* Change momentum. Doesn't work with adaptive learning algos. *)
@@ -571,7 +571,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
                         | Standard _ -> params.momentum <- Momentum.Standard em
                         | Nesterov _ -> params.momentum <- Momentum.Nesterov em
                         | None -> params.momentum <- Momentum.Standard em *)
-      in
+      (* in *)
       (* Detect if decay expired *)
 (*    let decay = decay_duration task in
       let _ = match (decay <> 0 
