@@ -5,6 +5,7 @@ open Owl
 open Neural.S
 open Neural.S.Graph
 open Algodiff.S
+open Owl_optimise.S
 
 
 let make_network input_shape =
@@ -22,18 +23,50 @@ let make_network input_shape =
   |> linear 10 ~act_typ:Activation.(Softmax 1)
   |> get_network
 
+let validate_model (params:Params.typ) model i vx vy = 
+  Owl_log.info "Validation iteration: %i" i;
+  let model = Graph.copy model in
+  let xt, yt = (Batch.run params.batch) vx vy i in
+  let yt', _ = (Graph.forward model) xt in
+  let loss = (Loss.run params.loss) yt yt' in
+  (* take the mean of the loss *)
+  let loss = Maths.(loss / (F (Mat.row_num yt |> float_of_int))) in
+  Owl_log.info "Validation Loss = %.6f." (unpack_flt loss);
+  unpack_flt loss 
+
+let write_float_to_file filename l =
+  let open Printf in
+  let oc = open_out_gen [Open_creat; Open_text; Open_append] 0o640 filename in
+  fprintf oc "%.6f," l;
+  close_out oc  
+
 let train () =
   (* let x, _, y = Dataset.load_mnist_train_data_arr () in *)
   let x, _, y = Dataset.load_cifar_train_data 1 in
+  
+  let x = Owl_dense_ndarray.S.split ~axis:0 [|8000;2000|] (x) in
+  let y = Owl_dense_ndarray.S.split ~axis:0 [|8000;2000|] (y) in
+  let vx = (Arr x.(1)) in
+  let x = (x.(0)) in 
+  let vy = (Arr y.(1)) in
+  let y = (y.(0)) in
+
   (* let network = make_network [|28;28;1|] in *)
   let network = make_network [|32;32;3|] in
 
+  (* Hotfix. TODO: Refactor val_loss calculation in owl_optimise_generic *)
+  let val_params = Params.config
+    ~batch:(Batch.Mini 128) ~learning_rate:(Learning_Rate.Adagrad 0.001) 120.0
+  in
+
+  let lowest_val_loss = ref 0. in
+  let patience = ref 0 in
+
   (* define checkpoint function *)
-  
   let chkpt state =
     let open Checkpoint in
     if state.current_batch mod 1 = 0 then (
-(*       Owl_log.info "Plotting loss function..";   
+(*     Owl_log.info "Plotting loss function..";   
       let z = Array.map unpack_flt state.loss in
       let c = Array.sub z 0 state.batches in 
       (* Array.map (Owl_log.info "%.6f") c; *)
@@ -57,16 +90,24 @@ let train () =
       Plot.output h; *)
       let z = Array.map unpack_flt state.loss in
       let c = Array.sub z 0 state.current_batch in 
-      let open Printf in
-      (* Write losses to file to print graph separately*)
-      let oc = open_out_gen [Open_append; Open_creat] 0o666 "loss.txt" in
-      fprintf oc "%.6f," (c.((Array.length c) - 1));
-      close_out oc;
-      let oc = open_out_gen [Open_append; Open_creat] 0o666 "time.txt" in
-      fprintf oc "%.6f," (Unix.gettimeofday () -. state.start_at);
-      close_out oc;
+      write_float_to_file "loss.txt" (c.((Array.length c) - 1));
+      write_float_to_file "time.txt" (Unix.gettimeofday () -. state.start_at);
 
-      state.stop <- true;
+      let _ = match state.current_batch mod state.batches_per_epoch = 0 with
+      | false -> ()
+      | true  -> let vl = validate_model val_params network (state.current_batch / state.batches_per_epoch - 1) vx vy in
+                 write_float_to_file "val_loss.txt" vl;
+                 match !lowest_val_loss <> 0. && vl >= !lowest_val_loss with
+                      | true  ->  patience := !patience + 1
+                      | false ->  Graph.save network "model";
+                                  lowest_val_loss := vl;
+                                  patience := 0
+      in
+      match !patience >= 20 with 
+      | false -> ()
+      | true  -> Owl_log.info "Early stopping..";
+                 state.stop <- true
+
     )
   in
 
@@ -75,19 +116,20 @@ let train () =
     ~batch:(Batch.Mini 128) ~learning_rate:(Learning_Rate.Adagrad 0.001)
     ~checkpoint:(Checkpoint.Custom chkpt) ~stopping:(Stopping.Const 1e-6) 120.0
   in
-  (* keep restarting the optimisation until it finishes *)
+  Graph.train ~params network x y |> ignore;
+  (* (* keep restarting the optimisation until it finishes *)
   let state = Graph.train ~params network x y in
   while Checkpoint.(state.current_batch < state.batches) do
     Checkpoint.(state.stop <- false);
     Graph.train ~state ~params ~init_model:false network x y |> ignore
   done;
-
+ *)
   network
 
-(* TODO: Refactor. *)
+(* TODO: Refactor. network parameter is not needed *)
 let test network =
   let imgs, _, labels = Dataset.load_cifar_test_data () in
-  Graph.save network "model";
+  let network = Graph.load "model" in
   let s1 = [ [0;1999] ] in
   let s2 = [ [2000;3999] ] in
   let s3 = [ [4000;5999] ] in
