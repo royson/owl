@@ -103,7 +103,7 @@ let train () =
                                   lowest_val_loss := vl;
                                   patience := 0
       in
-      match !patience >= 75 with 
+      match !patience >= 50 with 
       | false -> ()
       | true  -> Owl_log.info "Early stopping..";
                  state.stop <- true
