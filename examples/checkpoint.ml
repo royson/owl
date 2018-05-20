@@ -22,7 +22,7 @@ let make_network input_shape =
   |> fully_connected 512 ~act_typ:Activation.Relu
   |> linear 10 ~act_typ:Activation.(Softmax 1)
   |> get_network
-
+(* 
 let validate_model (params:Params.typ) model i vx vy = 
   Owl_log.info "Validation iteration: %i" i;
   let model = Graph.copy model in
@@ -32,7 +32,7 @@ let validate_model (params:Params.typ) model i vx vy =
   (* take the mean of the loss *)
   let loss = Maths.(loss / (F (Mat.row_num yt |> float_of_int))) in
   Owl_log.info "Validation Loss = %.6f." (unpack_flt loss);
-  unpack_flt loss 
+  unpack_flt loss *) 
 
 let write_float_to_file filename l =
   let open Printf in
@@ -44,24 +44,24 @@ let train () =
   (* let x, _, y = Dataset.load_mnist_train_data_arr () in *)
   let x, _, y = Dataset.load_cifar_train_data 1 in
   
-  let x = Owl_dense_ndarray.S.split ~axis:0 [|8000;2000|] (x) in
+  (* let x = Owl_dense_ndarray.S.split ~axis:0 [|8000;2000|] (x) in
   let y = Owl_dense_ndarray.S.split ~axis:0 [|8000;2000|] (y) in
   let vx = (Arr x.(1)) in
   let x = (x.(0)) in 
   let vy = (Arr y.(1)) in
   let y = (y.(0)) in
-
+ *)
   (* let network = make_network [|28;28;1|] in *)
   let network = make_network [|32;32;3|] in
 
   (* Hotfix. TODO: Refactor val_loss calculation in owl_optimise_generic *)
-  let val_params = Params.config
+(*   let val_params = Params.config
     ~batch:(Batch.Mini 128) ~learning_rate:(Learning_Rate.Adagrad 0.001) 120.0
   in
 
   let lowest_val_loss = ref 0. in
   let patience = ref 0 in
-
+ *)
   (* define checkpoint function *)
   let chkpt state =
     let open Checkpoint in
@@ -93,7 +93,7 @@ let train () =
       write_float_to_file "loss.txt" (c.((Array.length c) - 1));
       write_float_to_file "time.txt" (Unix.gettimeofday () -. state.start_at);
 
-      let _ = match state.current_batch mod state.batches_per_epoch = 0 with
+(*       let _ = match state.current_batch mod state.batches_per_epoch = 0 with
       | false -> ()
       | true  -> let vl = validate_model val_params network (state.current_batch / state.batches_per_epoch - 1) vx vy in
                  write_float_to_file "val_loss.txt" vl;
@@ -106,7 +106,7 @@ let train () =
       match !patience >= 20 with 
       | false -> ()
       | true  -> Owl_log.info "Early stopping..";
-                 state.stop <- true
+                 state.stop <- true *)
 
     )
   in
@@ -129,7 +129,8 @@ let train () =
 (* TODO: Refactor. network parameter is not needed *)
 let test network =
   let imgs, _, labels = Dataset.load_cifar_test_data () in
-  let network = Graph.load "model" in
+  (* let network = Graph.load "model" in *)
+  Graph.save network "model";
   let s1 = [ [0;1999] ] in
   let s2 = [ [2000;3999] ] in
   let s3 = [ [4000;5999] ] in
