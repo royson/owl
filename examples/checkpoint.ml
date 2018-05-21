@@ -54,7 +54,7 @@ let train () =
 
   (* Training data *)
   let t_rows = Array.sub r 2000 8000 in
-  let x = Owl_dense_ndarray.S.get_fancy [L (Array.to_list t_rows)] y in
+  let x = Owl_dense_ndarray.S.get_fancy [L (Array.to_list t_rows)] x in
   let y = Owl_dense_ndarray.S.rows y t_rows in
 
   (* let network = make_network [|28;28;1|] in *)

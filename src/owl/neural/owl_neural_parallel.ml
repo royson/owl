@@ -641,7 +641,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
 
     (* Training data *)
     let t_rows = Array.sub r 2000 8000 in
-    let x = Arr (Owl_dense_ndarray.S.get_fancy [L (Array.to_list t_rows)] y) in
+    let x = Arr (Owl_dense_ndarray.S.get_fancy [L (Array.to_list t_rows)] x) in
     let y = Arr (Owl_dense_ndarray.S.rows y t_rows) in
 
     let server_task = make_server_task sid params nn x vx vy tx ty in
