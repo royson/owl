@@ -630,14 +630,19 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     let sid = Owl_stats.uniform_int_rvs ~a:0 ~b:max_int in
     let cid = Owl_stats.uniform_int_rvs ~a:0 ~b:max_int in
 
-     (* Split training and validation data to 80:20 *)
-    let open Owl_dense_ndarray.S in
-    let x = split ~axis:0 [|8000;2000|] (unpack_arr x) in
-    let y = split ~axis:0 [|8000;2000|] (unpack_arr y) in
-    let vx = (Arr x.(1)) in
-    let x = (Arr x.(0)) in 
-    let vy = (Arr y.(1)) in
-    let y = (Arr y.(0)) in
+    (* Split training and validation data to 80:20 *)
+    let r = Array.init (Owl_dense_ndarray.S.nth_dim x 0) (fun i -> i) in
+    let r = Owl_stats.shuffle r in
+    
+    (* Validation data *)
+    let v_rows = Array.sub r 0 2000 in 
+    let vx = Arr (Owl_dense_ndarray.S.get_fancy [L (Array.to_list v_rows)] x) in
+    let vy = Arr (Owl_dense_ndarray.S.rows y v_rows) in
+
+    (* Training data *)
+    let t_rows = Array.sub r 2000 8000 in
+    let x = Arr (Owl_dense_ndarray.S.get_fancy [L (Array.to_list t_rows)] y) in
+    let y = Arr (Owl_dense_ndarray.S.rows y t_rows) in
 
     let server_task = make_server_task sid params nn x vx vy tx ty in
     let client_task = make_client_task cid params x y in 
@@ -649,8 +654,8 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     E.start ~barrier:E.ASP jid url
 
 
-  let train ?params nn x y tx ty jid url = train_generic ?params nn (Arr x) (Arr y) 
-                                            (Arr tx) (Arr ty) jid url
+  let train ?params nn x y tx ty jid url = train_generic ?params nn x y 
+                                            tx ty jid url
 
 
 end

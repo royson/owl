@@ -44,12 +44,18 @@ let train () =
   (* let x, _, y = Dataset.load_mnist_train_data_arr () in *)
   let x, _, y = Dataset.load_cifar_train_data 1 in
   
-  let x = Owl_dense_ndarray.S.split ~axis:0 [|8000;2000|] (x) in
-  let y = Owl_dense_ndarray.S.split ~axis:0 [|8000;2000|] (y) in
-  let vx = (Arr x.(1)) in
-  let x = (x.(0)) in 
-  let vy = (Arr y.(1)) in
-  let y = (y.(0)) in
+  let r = Array.init (Owl_dense_ndarray.S.nth_dim x 0) (fun i -> i) in
+  let r = Owl_stats.shuffle r in
+  
+  (* Validation data *)
+  let v_rows = Array.sub r 0 2000 in
+  let vx = Arr (Owl_dense_ndarray.S.get_fancy [L (Array.to_list v_rows)] x) in
+  let vy = Arr (Owl_dense_ndarray.S.rows y v_rows) in
+
+  (* Training data *)
+  let t_rows = Array.sub r 2000 8000 in
+  let x = Owl_dense_ndarray.S.get_fancy [L (Array.to_list t_rows)] y in
+  let y = Owl_dense_ndarray.S.rows y t_rows in
 
   (* let network = make_network [|28;28;1|] in *)
   let network = make_network [|32;32;3|] in
