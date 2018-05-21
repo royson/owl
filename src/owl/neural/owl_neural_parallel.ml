@@ -655,7 +655,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
 
 
   let train ?params nn x y tx ty jid url = train_generic ?params nn x y 
-                                            tx ty jid url
+                                            (Arr tx) (Arr ty) jid url
 
 
 end
