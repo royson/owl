@@ -571,7 +571,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
                         | Standard _ -> params.momentum <- Momentum.Standard em
                         | Nesterov _ -> params.momentum <- Momentum.Nesterov em
                         | None -> params.momentum <- Momentum.Standard em *)
-      (* in *)
+      in
       (* Detect if decay expired *)
 (*    let decay = decay_duration task in
       let _ = match (decay <> 0 
