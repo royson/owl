@@ -163,7 +163,7 @@ module Make
       | Relu        -> Maths.relu x
       | Sigmoid     -> Maths.sigmoid x
       | HardSigmoid -> Maths.(max2 (F 0.) (min2 (F 1.) ((F 0.2) * x + (F 0.5))))
-      | Softmax a   -> Maths.softmax ~axis:a x
+      | Softmax a   -> Mat.map_by_row (Maths.softmax ~axis:a) x
       | Softplus    -> Maths.softplus x
       | Softsign    -> Maths.softsign x
       | Tanh        -> Maths.tanh x
