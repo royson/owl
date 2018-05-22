@@ -482,13 +482,13 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       in
       E.set (string_of_int task.sid ^ "finish") Checkpoint.(state.stop); 
 
-     (*  let current_progression = E.progressive_num () in
+      let current_progression = E.progressive_num () in
       (* Add/Remove workers for PASP barrier every 125 iterations *)
       let workers_changed = match Checkpoint.(state.current_batch mod 125 = 0) with
         | false -> false
         (* Progressive mode *)
-        | true  -> E.add_workers current_progression
-      *)   (* Capricious mode *)(* 
+        (* | true  -> E.add_workers current_progression *)
+        (* Capricious mode *)
         | true  -> let b  = Owl_stats.uniform_int_rvs ~a:0 ~b:1 in
                    let cw = Owl_stats.uniform_int_rvs ~a:1 ~b:8 in
                    match b with
@@ -496,11 +496,11 @@ module Make (M : ModelSig) (E : EngineSig) = struct
                           E.add_workers cw
                    | _ -> Owl_log.debug "%i workers attempting to leave." cw;
                           E.remove_workers cw
-         *)
-      (* in *)
+         
+      in
 
       (* Detect if workers changed *)
-(*       let _ = match workers_changed with
+      let _ = match workers_changed with
         | false ->  ()
         | true  ->  (* Increase batch size *)
                     let bs = base_bs task |> float_of_int in
@@ -556,7 +556,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
                       | AdaDelay _         -> params.learning_rate <- AdaDelay nlr
                       | DelayComp (_, v, m)-> params.learning_rate <- DelayComp (nlr, v, m)
                       | _                  -> ()
- *)
+
 
 
                       (* Change momentum. Doesn't work with adaptive learning algos. *)
@@ -651,7 +651,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     E.register_pull (pull server_task);
     E.register_push (push client_task);
     E.register_stop (stop server_task);
-    E.start ~barrier:E.ASP jid url
+    E.start ~barrier:E.PASP jid url
 
 
   let train ?params nn x y tx ty jid url = train_generic ?params nn x y 
