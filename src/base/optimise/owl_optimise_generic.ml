@@ -406,7 +406,7 @@ module Make
       |> flush_all
 
     let run typ save_fun current_batch current_loss state =
-      state.loss.(current_batch) <- current_loss;
+      state.loss.(current_batch) <- (primal' current_loss);
       state.stop <- (state.current_batch >= state.batches);
       let interval = match typ with
         | Batch i  -> i
@@ -540,7 +540,7 @@ module Make
           Checkpoint.(state.ps <- [| [|Maths.(neg _g0)|] |]);
           Checkpoint.(state.us <- [| [|F 0.|] |]);
           Checkpoint.(state.ch <- [| [| [|F 0.; F 0.|] |] |]);
-          Checkpoint.(state.loss.(0) <- _loss);
+          Checkpoint.(state.loss.(0) <- primal' _loss);
           state
         )
     in
@@ -572,6 +572,8 @@ module Make
       Checkpoint.(state.gs.(0).(0) <- g');
       Checkpoint.(state.ps.(0).(0) <- p');
       Checkpoint.(state.current_batch <- state.current_batch + 1);
+      (* force GC to release bigarray memory *)
+      Gc.minor ();
     done;
 
     (* print optimisation summary *)
@@ -817,7 +819,7 @@ module Make
           Checkpoint.(state.ps <- Owl_utils.aarr_map Maths.neg _gs);
           Checkpoint.(state.us <- Owl_utils.aarr_map (fun _ -> F 0.) _gs);
           Checkpoint.(state.ch <- Owl_utils.aarr_map (fun _ -> [|F 0.; F 0.|]) _gs);
-          Checkpoint.(state.loss.(0) <- _loss);
+          Checkpoint.(state.loss.(0) <- primal' _loss);
           state
         )
     in
@@ -854,7 +856,8 @@ module Make
       Checkpoint.(state.gs <- gs');
       Checkpoint.(state.ps <- ps');
       Checkpoint.(state.current_batch <- state.current_batch + 1);
-      (** TODO: Gc.minor (); *)
+      (* force GC to release bigarray memory *)
+      Gc.minor ();
     done;
 
     (* print optimisation summary *)
@@ -903,7 +906,7 @@ module Make
           Checkpoint.(state.ps <- [| [|Maths.(neg _g0)|] |]);
           Checkpoint.(state.us <- [| [|F 0.|] |]);
           Checkpoint.(state.ch <- [| [| [|F 0.; F 0.|] |] |]);
-          Checkpoint.(state.loss.(0) <- _loss);
+          Checkpoint.(state.loss.(0) <- primal' _loss);
           state
         )
     in
@@ -935,6 +938,8 @@ module Make
       Checkpoint.(state.gs.(0).(0) <- g');
       Checkpoint.(state.ps.(0).(0) <- p');
       Checkpoint.(state.current_batch <- state.current_batch + 1);
+      (* force GC to release bigarray memory *)
+      Gc.minor ();
     done;
 
     (* print optimisation summary *)
