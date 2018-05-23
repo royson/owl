@@ -475,7 +475,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       in
 
       (* Determine if training ends *)
-      let _ = match task.patience >= 50 || Checkpoint.((unpack_flt (state.loss.(state.current_batch)))) < 0.15 with 
+      let _ = match task.patience >= 50 || (state.current_batch > 1 && Checkpoint.((unpack_flt (state.loss.(state.current_batch)))) < 0.15) with 
       | false -> ()
       | true  -> Owl_log.info "Early stopping..";
                  Checkpoint.(state.stop <- true)
