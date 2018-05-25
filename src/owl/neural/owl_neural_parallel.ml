@@ -494,7 +494,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
                    (* let lw = Owl_stats.uniform_int_rvs ~a:1 ~b:1 in *)
                    match b with
                    | 2 -> Owl_log.debug "%i workers attempting to leave." 2;
-                          E.remove_workers lw
+                          E.remove_workers 2
                    | _ -> Owl_log.debug "%i workers attempting to join." aw;
                           E.add_workers aw
          
