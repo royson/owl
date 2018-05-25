@@ -199,52 +199,39 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     fprintf oc "%.6f," l;
     close_out oc  
 
-  (* TODO: Refactor brute-force approach. *)
   let test_network task =
     Owl_log.info "Running test";
     let model = M.copy task.model in
     let open Owl_dense in
     let imgs, labels = unpack_arr task.test_x, unpack_arr task.test_y in
 
-    let s1 = [ [0;1999] ] in
-    let s2 = [ [2000;3999] ] in
-    let s3 = [ [4000;5999] ] in
-    let s4 = [ [6000;7999] ] in
-    let s5 = [ [8000;9999] ] in
-    let imgs1 = Ndarray.S.get_slice s1 imgs in
-    let imgs2 = Ndarray.S.get_slice s2 imgs in
-    let imgs3 = Ndarray.S.get_slice s3 imgs in
-    let imgs4 = Ndarray.S.get_slice s4 imgs in
-    let imgs5 = Ndarray.S.get_slice s5 imgs in
-
-    (* Assume all slices same size *)
-    let m = Ndarray.S.nth_dim imgs1 0 in
-
     let mat2num x s = Matrix.S.of_array (
         x |> Matrix.Generic.max_rows
           |> Array.map (fun (_,_,num) -> float_of_int num)
       ) 1 s
     in
-    let pred1 = mat2num (M.model model imgs1) m in
-    Owl_log.info "Calculating.. 20";
-    let pred2 = mat2num (M.model model imgs2) m in
-    Owl_log.info "Calculating.. 40";
-    let pred3 = mat2num (M.model model imgs3) m in
-    Owl_log.info "Calculating.. 60";
-    let pred4 = mat2num (M.model model imgs4) m in
-    Owl_log.info "Calculating.. 80";
-    let pred5 = mat2num (M.model model imgs5) m in
 
-    let pred = Matrix.S.concat_horizontal pred1 pred2 in
-    let pred = Matrix.S.concat_horizontal pred pred3 in
-    let pred = Matrix.S.concat_horizontal pred pred4 in
-    let pred = Matrix.S.concat_horizontal pred pred5 in
-
-    let fact = mat2num labels (m * 5) in
-    let accu = Matrix.S.(elt_equal pred fact |> sum') in
-    let res = (accu /. (float_of_int (m * 5))) in
-    Owl_log.info "Accuracy on test set: %f" res;
-    write_float_to_file "result.txt" res
+    let s = [ 
+    [ [0;499] ] ; [ [500;999] ] ; [ [1000;1499] ] ; [ [1500;1999] ]
+    ; [ [2000;2499] ] ; [ [2500;2999] ] ; [ [3000;3499] ] ; [ [3500;3999] ] 
+    ; [ [4000;4499] ] ; [ [4500;4999] ] ; [ [5000;5499] ] ; [ [5500;5999] ] 
+    ; [ [6000;6499] ] ; [ [6500;6999] ] ; [ [7000;7499] ] ; [ [7500;7999] ] 
+    ; [ [8000;8499] ] ; [ [8500;8999] ] ; [ [9000;9499] ] ; [ [9500;9999] ]
+    ] 
+    in
+    let calc_accu s1 = 
+      let imgs1 = Ndarray.S.get_slice s1 imgs in
+      let m = Ndarray.S.nth_dim imgs1 0 in
+      let label1 = Ndarray.S.get_slice s1 labels in
+      let fact1 = mat2num label1 m in
+      let pred1 = mat2num (M.model model imgs1) m in
+      let accu1 = Matrix.S.(elt_equal pred1 fact1 |> sum') in
+      accu1
+    in
+    let accu = List.map calc_accu s |> List.fold_left (+.) 0. in
+    let m = Ndarray.S.nth_dim labels 0 in
+    let res = (accu /. (float_of_int (m))) in
+    Owl_log.info "Accuracy on test set: %f" res;;
 
   let validate_model task i = 
     Owl_log.debug "Validation iteration: %i" i;
