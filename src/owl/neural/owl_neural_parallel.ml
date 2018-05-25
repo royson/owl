@@ -490,13 +490,13 @@ module Make (M : ModelSig) (E : EngineSig) = struct
         (* | true  -> E.add_workers current_progression *)
         (* Capricious mode *)
         | true  -> let b  = Owl_stats.uniform_int_rvs ~a:0 ~b:2 in
-                   let aw = Owl_stats.uniform_int_rvs ~a:1 ~b:8 in
-                   (* let lw = Owl_stats.uniform_int_rvs ~a:1 ~b:1 in *)
+                   let aw = Owl_stats.uniform_int_rvs ~a:1 ~b:2 in
+                   let lw = Owl_stats.uniform_int_rvs ~a:1 ~b:8 in
                    match b with
-                   | 2 -> Owl_log.debug "%i workers attempting to leave." 2;
-                          E.remove_workers 2
-                   | _ -> Owl_log.debug "%i workers attempting to join." aw;
+                   | 2 -> Owl_log.debug "%i workers attempting to join." aw;
                           E.add_workers aw
+                   | _ -> Owl_log.debug "%i workers attempting to leave." lw;
+                          E.remove_workers lw
          
       in
 
