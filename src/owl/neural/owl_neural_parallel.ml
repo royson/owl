@@ -202,7 +202,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
   (* TODO: Refactor brute-force approach. *)
   let test_network task =
     Owl_log.info "Running test";
-    let model = M.load "model" in
+    let model = M.copy task.model in
     let open Owl_dense in
     let imgs, labels = unpack_arr task.test_x, unpack_arr task.test_y in
 
@@ -462,11 +462,14 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       task.time <- t :: task.time;
       plot_loss_time task.loss task.time; *) 
 
+
+
       (* Calculate Validation loss every epoch *)
       let _ = match Checkpoint.(state.current_batch mod (state.batches_per_epoch) = 0) with
         | false ->  ()
         | true  ->  let vl = validate_model task (Checkpoint.(state.current_batch / (state.batches_per_epoch)) - 1) in
                     write_float_to_file "val_loss.txt" vl;
+                    test_network task;
                     match task.lowest_val_loss <> 0. && vl >= task.lowest_val_loss with
                       | true  ->  task.patience <- task.patience + 1
                       | false ->  M.save task.model "model";
@@ -652,7 +655,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     E.register_pull (pull server_task);
     E.register_push (push client_task);
     E.register_stop (stop server_task);
-    E.start ~barrier:E.PASP jid url
+    E.start ~barrier:E.ASP jid url
 
 
   let train ?params nn x y tx ty jid url = train_generic ?params nn x y 
