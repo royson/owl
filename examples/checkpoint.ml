@@ -139,8 +139,7 @@ let train () =
                  test network;
                  match !lowest_val_loss <> 0. && vl >= !lowest_val_loss with
                       | true  ->  patience := !patience + 1
-                      | false ->  Graph.save network "model";
-                                  lowest_val_loss := vl;
+                      | false ->  lowest_val_loss := vl;
                                   patience := 0
       in
       match !patience >= 50 with 

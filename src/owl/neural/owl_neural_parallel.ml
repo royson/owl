@@ -462,8 +462,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
                     test_network task;
                     match task.lowest_val_loss <> 0. && vl >= task.lowest_val_loss with
                       | true  ->  task.patience <- task.patience + 1
-                      | false ->  M.save task.model "model";
-                                  task.lowest_val_loss <- vl;
+                      | false ->  task.lowest_val_loss <- vl;
                                   task.patience <- 0
       in
 
