@@ -605,6 +605,7 @@ module Make
     let loss = primal' loss in
     (* clip the gradient if necessary *)
     let gs' = Owl_utils.aarr_map clip_fun gs' in
+    Gc.minor ();
     (* Return loss and gs' *)
     gs', loss
 
@@ -760,6 +761,8 @@ module Make
     Checkpoint.(state.gs <- gradient);
     Checkpoint.(state.ps <- ps');
     Checkpoint.(state.current_batch <- state.current_batch + 1);
+
+    Gc.minor ();
 
     (* print optimisation summary *)
     if params.verbosity = true && Checkpoint.(state.current_batch >= state.batches) then
