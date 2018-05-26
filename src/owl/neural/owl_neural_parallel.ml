@@ -233,6 +233,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     let accu = List.map calc_accu s |> List.fold_left (+.) 0. in
     let m = Ndarray.S.nth_dim labels 0 in
     let res = (accu /. (float_of_int (m))) in
+    write_float_to_file "result.txt" res;
     Owl_log.info "Accuracy on test set: %f" res;;
 
   let validate_model task i = 

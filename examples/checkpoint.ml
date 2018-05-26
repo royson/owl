@@ -103,6 +103,7 @@ let train () =
       | false -> ()
       | true  -> let vl = validate_model val_params network (state.current_batch / state.batches_per_epoch - 1) vx vy in
                  write_float_to_file "val_loss.txt" vl;
+                 test_network network;
                  match !lowest_val_loss <> 0. && vl >= !lowest_val_loss with
                       | true  ->  patience := !patience + 1
                       | false ->  Graph.save network "model";
@@ -135,7 +136,7 @@ let train () =
 (* TODO: Refactor. network parameter is not needed *)
 let test network =
   let imgs, _, labels = Dataset.load_cifar_test_data () in
-  let network = Graph.load "model" in
+  let network = Graph.copy network in
   let s1 = [ [0;1999] ] in
   let s2 = [ [2000;3999] ] in
   let s3 = [ [4000;5999] ] in
@@ -170,6 +171,7 @@ let test network =
   let fact = mat2num labels (m * 5) in
   let accu = Dense.Matrix.S.(elt_equal pred fact |> sum') in
   let res = (accu /. (float_of_int (m * 5))) in
+  write_float_to_file "result.txt" res;
   Owl_log.info "Accuracy on test set: %f" res;;
 
 
