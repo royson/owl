@@ -7,6 +7,12 @@ open Neural.S.Graph
 open Algodiff.S
 open Owl_optimise.S
 
+let write_float_to_file filename l =
+  let open Printf in
+  let oc = open_out_gen [Open_creat; Open_text; Open_append] 0o640 filename in
+  fprintf oc "%.6f," l;
+  close_out oc  
+
 
 let make_network input_shape =
   input input_shape
@@ -34,11 +40,38 @@ let validate_model (params:Params.typ) model i vx vy =
   Owl_log.info "Validation Loss = %.6f." (unpack_flt loss);
   unpack_flt loss 
 
-let write_float_to_file filename l =
-  let open Printf in
-  let oc = open_out_gen [Open_creat; Open_text; Open_append] 0o640 filename in
-  fprintf oc "%.6f," l;
-  close_out oc  
+let test model =
+  let imgs, _, labels = Dataset.load_cifar_test_data () in
+  let model = Graph.copy model in
+  let mat2num x s = Dense.Matrix.S.of_array (
+      x |> Dense.Matrix.Generic.max_rows
+        |> Array.map (fun (_,_,num) -> float_of_int num)
+    ) 1 s
+  in
+
+  let s = [ 
+  [ [0;499] ] ; [ [500;999] ] ; [ [1000;1499] ] ; [ [1500;1999] ]
+  ; [ [2000;2499] ] ; [ [2500;2999] ] ; [ [3000;3499] ] ; [ [3500;3999] ] 
+  ; [ [4000;4499] ] ; [ [4500;4999] ] ; [ [5000;5499] ] ; [ [5500;5999] ] 
+  ; [ [6000;6499] ] ; [ [6500;6999] ] ; [ [7000;7499] ] ; [ [7500;7999] ] 
+  ; [ [8000;8499] ] ; [ [8500;8999] ] ; [ [9000;9499] ] ; [ [9500;9999] ]
+  ] 
+  in
+  let calc_accu s1 = 
+    let imgs1 = Dense.Ndarray.S.get_slice s1 imgs in
+    let m = Dense.Ndarray.S.nth_dim imgs1 0 in
+    let label1 = Dense.Ndarray.S.get_slice s1 labels in
+    let fact1 = mat2num label1 m in
+    let pred1 = mat2num (Graph.model model imgs1) m in
+    let accu1 = Dense.Matrix.S.(elt_equal pred1 fact1 |> sum') in
+    Gc.minor ();
+    accu1
+  in
+  let accu = List.map calc_accu s |> List.fold_left (+.) 0. in
+  let m = Dense.Ndarray.S.nth_dim labels 0 in
+  let res = (accu /. (float_of_int (m))) in
+  write_float_to_file "result.txt" res;
+  Owl_log.info "Accuracy on test set: %f" res;;
 
 let train () =
   (* let x, _, y = Dataset.load_mnist_train_data_arr () in *)
@@ -103,7 +136,7 @@ let train () =
       | false -> ()
       | true  -> let vl = validate_model val_params network (state.current_batch / state.batches_per_epoch - 1) vx vy in
                  write_float_to_file "val_loss.txt" vl;
-                 test_network network;
+                 test network;
                  match !lowest_val_loss <> 0. && vl >= !lowest_val_loss with
                       | true  ->  patience := !patience + 1
                       | false ->  Graph.save network "model";
@@ -132,47 +165,5 @@ let train () =
   done;
  *)
   network
-
-(* TODO: Refactor. network parameter is not needed *)
-let test network =
-  let imgs, _, labels = Dataset.load_cifar_test_data () in
-  let network = Graph.copy network in
-  let s1 = [ [0;1999] ] in
-  let s2 = [ [2000;3999] ] in
-  let s3 = [ [4000;5999] ] in
-  let s4 = [ [6000;7999] ] in
-  let s5 = [ [8000;9999] ] in
-  let imgs1 = Dense.Ndarray.S.get_slice s1 imgs in
-  let imgs2 = Dense.Ndarray.S.get_slice s2 imgs in
-  let imgs3 = Dense.Ndarray.S.get_slice s3 imgs in
-  let imgs4 = Dense.Ndarray.S.get_slice s4 imgs in
-  let imgs5 = Dense.Ndarray.S.get_slice s5 imgs in
-
-  (* Assume all slices same size *)
-  let m = Dense.Ndarray.S.nth_dim imgs1 0 in
-
-  let mat2num x s = Dense.Matrix.S.of_array (
-      x |> Dense.Matrix.Generic.max_rows
-        |> Array.map (fun (_,_,num) -> float_of_int num)
-    ) 1 s
-  in
-
-  let pred1 = mat2num (Graph.model network imgs1) m in
-  let pred2 = mat2num (Graph.model network imgs2) m in
-  let pred3 = mat2num (Graph.model network imgs3) m in
-  let pred4 = mat2num (Graph.model network imgs4) m in
-  let pred5 = mat2num (Graph.model network imgs5) m in
-
-  let pred = Dense.Matrix.S.concat_horizontal pred1 pred2 in
-  let pred = Dense.Matrix.S.concat_horizontal pred pred3 in
-  let pred = Dense.Matrix.S.concat_horizontal pred pred4 in
-  let pred = Dense.Matrix.S.concat_horizontal pred pred5 in
-
-  let fact = mat2num labels (m * 5) in
-  let accu = Dense.Matrix.S.(elt_equal pred fact |> sum') in
-  let res = (accu /. (float_of_int (m * 5))) in
-  write_float_to_file "result.txt" res;
-  Owl_log.info "Accuracy on test set: %f" res;;
-
 
 let _ = train () |> test
