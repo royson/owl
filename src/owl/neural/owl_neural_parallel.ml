@@ -527,7 +527,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
                       | Stochastic  -> params.batch <- Mini nbs
                       | Full        -> ()
                       in
-                      E.set (string_of_int task.sid ^ "current_bs") params.batch
+                      E.set (string_of_int task.sid ^ "current_bs") params.batch;
 
                       (* Decay learning rate *)
                   (*  let lr = base_lr task in
@@ -541,7 +541,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
                       let nlr = lr *. (exp (-0.1 *. d)) in*)
 
 
-(*                       Owl_log.debug "New Learning Rate: %f" nlr;
+                      Owl_log.debug "New Learning Rate: %f" nlr;
                       match params.learning_rate with
                       | Adagrad _          -> params.learning_rate <- Adagrad nlr
                       | Const _            -> params.learning_rate <- Const nlr
@@ -551,8 +551,8 @@ module Make (M : ModelSig) (E : EngineSig) = struct
                       | _                  -> ()
 
 
- *)
-                      (* Change momentum. Doesn't work with adaptive learning algos. *)
+
+                      (* Change momentum. Doesn't work with Adagrad and it's variants. *)
                       (* let w = E.progressive_num () in
                       let tm = total_momentum task in
                       let im = calc_implicit_momentum w in
