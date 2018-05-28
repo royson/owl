@@ -467,7 +467,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       in
 
       (* Determine if training ends *)
-      let _ = match task.patience >= 50 || loss' < 0.15 with 
+      let _ = match task.patience >= 50 || loss' < 0.05 with 
       | false -> ()
       | true  -> Owl_log.info "Early stopping..";
                  Checkpoint.(state.stop <- true)
