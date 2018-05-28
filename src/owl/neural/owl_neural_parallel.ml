@@ -493,7 +493,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       in
 
       (* Detect if workers changed *)
-      (* let _ = match workers_changed with
+      let _ = match workers_changed with
         | false ->  ()
         | true  ->  (* Increase batch size *)
                     let bs = base_bs task |> float_of_int in
@@ -527,8 +527,8 @@ module Make (M : ModelSig) (E : EngineSig) = struct
                       | Stochastic  -> params.batch <- Mini nbs
                       | Full        -> ()
                       in
-                      E.set (string_of_int task.sid ^ "current_bs") params.batch;
- *)
+                      E.set (string_of_int task.sid ^ "current_bs") params.batch
+
                       (* Decay learning rate *)
                   (*  let lr = base_lr task in
                       let w  = base_workers task in
@@ -564,7 +564,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
                         | Standard _ -> params.momentum <- Momentum.Standard em
                         | Nesterov _ -> params.momentum <- Momentum.Nesterov em
                         | None -> params.momentum <- Momentum.Standard em *)
-      (* in *)
+      in
       (* Detect if decay expired *)
 (*    let decay = decay_duration task in
       let _ = match (decay <> 0 
@@ -644,7 +644,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     E.register_pull (pull server_task);
     E.register_push (push client_task);
     E.register_stop (stop server_task);
-    E.start ~barrier:E.ASP jid url
+    E.start ~barrier:E.PASP jid url
 
 
   let train ?params nn x y tx ty jid url = train_generic ?params nn x y 
