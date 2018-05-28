@@ -474,24 +474,24 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       in
       E.set (string_of_int task.sid ^ "finish") Checkpoint.(state.stop); 
 
-(*       let current_progression = E.progressive_num () in
-      (* Add/Remove workers for PASP barrier every 125 iterations *)
-      let workers_changed = match Checkpoint.(state.current_batch mod 125 = 0) with
+      let current_progression = E.progressive_num () in
+      (* Add/Remove workers for PASP barrier every 5 epochs *)
+      let workers_changed = match Checkpoint.(state.current_batch mod (state.batches_per_epoch * 5) = 0) with
         | false -> false
         (* Progressive mode *)
         | true  -> E.add_workers current_progression
-        (* Capricious mode *)
-        | true  -> let b  = Owl_stats.uniform_int_rvs ~a:0 ~b:2 in
+        (* Dynamic mode *)
+(*         | true  -> let b  = Owl_stats.uniform_int_rvs ~a:0 ~b:2 in
                    let aw = Owl_stats.uniform_int_rvs ~a:1 ~b:2 in
                    let lw = Owl_stats.uniform_int_rvs ~a:1 ~b:8 in
                    match b with
                    | 2 -> Owl_log.debug "%i workers attempting to join." aw;
                           E.add_workers aw
                    | _ -> Owl_log.debug "%i workers attempting to leave." lw;
-                          E.remove_workers lw
+                          E.remove_workers lw *)
          
       in
- *)
+
       (* Detect if workers changed *)
       (* let _ = match workers_changed with
         | false ->  ()
