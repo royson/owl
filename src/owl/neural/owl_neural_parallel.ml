@@ -505,7 +505,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
                     let d = (w' - w) in
                     Owl_log.debug "Worker count changed to %i" w';
                     let d = float_of_int d in
-                    let nlr = lr *. (exp (-0.175 *. d)) in
+                    let nlr = lr *. (exp (-0.15 *. d)) in
                     let nbs = bs *. (lr /. nlr) |> int_of_float in
                     Owl_log.debug "New Batch Size %i" nbs;
                     (* Check if new batch size affects training *)
