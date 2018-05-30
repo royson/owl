@@ -371,7 +371,8 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     let batch_no = task.schedule_no in
     let cb = current_batch_size task in
     (* If AdaptiveRevision, record total gradient for worker before schedule.
-       If AdaDelay, record current iteration *)
+       If AdaDelay, record current iteration
+       If DC-ASGD, record current model  *)
     let tasks = List.mapi (fun i x ->
       let _ = match params.learning_rate with 
       | AdaptiveRev _   -> let total_gs = total_gradient task in
@@ -504,7 +505,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
                     let d = (w' - w) in
                     Owl_log.debug "Worker count changed to %i" w';
                     let d = float_of_int d in
-                    let nlr = lr *. (exp (-0.125 *. d)) in
+                    let nlr = lr *. (exp (-0.175 *. d)) in
                     let nbs = bs *. (lr /. nlr) |> int_of_float in
                     Owl_log.debug "New Batch Size %i" nbs;
                     (* Check if new batch size affects training *)
