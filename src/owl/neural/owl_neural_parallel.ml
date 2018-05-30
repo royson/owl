@@ -307,7 +307,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     )
 
 
-  (* for learning_rate for PASP *)
+  (* base learning_rate for PASP *)
   let base_lr task =
     let params = task.server_params in
     let k = (string_of_int task.sid ^ "base_lr") in
@@ -480,11 +480,12 @@ module Make (M : ModelSig) (E : EngineSig) = struct
         (* Progressive mode *)
         | true  -> E.add_workers current_progression
         (* Dynamic mode *)
-(*         | true  -> let b  = Owl_stats.uniform_int_rvs ~a:0 ~b:2 in
-                   let aw = Owl_stats.uniform_int_rvs ~a:1 ~b:2 in
+(*         | true  -> let b  = Owl_stats.uniform_int_rvs ~a:0 ~b:1 in
+                   let aw = Owl_stats.uniform_int_rvs ~a:1 ~b:8 in
                    let lw = Owl_stats.uniform_int_rvs ~a:1 ~b:8 in
                    match b with
-                   | 2 -> Owl_log.debug "%i workers attempting to join." aw;
+                   | 1 -> Owl_log.debug "%i workers attempting to join." aw;
+                          
                           E.add_workers aw
                    | _ -> Owl_log.debug "%i workers attempting to leave." lw;
                           E.remove_workers lw *)
@@ -503,7 +504,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
                     let d = (w' - w) in
                     Owl_log.debug "Worker count changed to %i" w';
                     let d = float_of_int d in
-                    let nlr = lr *. (exp (-0.15 *. d)) in
+                    let nlr = lr *. (exp (-0.125 *. d)) in
                     let nbs = bs *. (lr /. nlr) |> int_of_float in
                     Owl_log.debug "New Batch Size %i" nbs;
                     (* Check if new batch size affects training *)
@@ -562,7 +563,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
                       match params.momentum with
                         | Standard _ -> params.momentum <- Momentum.Standard em
                         | Nesterov _ -> params.momentum <- Momentum.Nesterov em
-                        | None -> params.momentum <- Momentum.Standard em *)
+                        | None       -> params.momentum <- Momentum.Standard em *)
       in
       (* Detect if decay expired *)
 (*    let decay = decay_duration task in
