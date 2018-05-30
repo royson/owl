@@ -133,20 +133,19 @@ module Make (M : ModelSig) (E : EngineSig) = struct
   }
             
   (* Plot the loss function per time *)
-  let plot_loss_time id losses time =
+  let plot_loss_time filename id losses time =
     let open Owl_plot in
     (* Might replace List with an Array with a length counter instead *)
     let losses = List.rev losses in
     let time = List.rev time in
 
     (* Bug: Currently crashes on Ubuntu 16.04. Writing to file instead.*)
-    (* let h = create ("Time - Distributed MNist Conv2d Adam 0.01.png") in
+    (* let h = create (filename) in
     let x_range = float_of_int ((List.length losses)) in
     let y_range l = List.fold_left Pervasives.max (List.hd l) l |> Pervasives.(+.) in
-    Owl_log.debug "Plotting loss function.. ";
     set_foreground_color h 0 0 0;
     set_background_color h 255 255 255;
-    set_title h ("Distributed MNist Conv2d Adam 0.01 (2W)");
+    set_title h (filename);
     set_xrange h 0. (x_range +. 10.);
     set_yrange h 0. (y_range losses 2.0);
     set_xlabel h "Time (s)";
@@ -450,7 +449,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       (* For plotting in real time. Bug in Ubuntu 16.04 Server. *)
       (* task.loss <- loss' :: task.loss;
       task.time <- t :: task.time;
-      plot_loss_time task.loss task.time; *) 
+      plot_loss_time "loss.png" task.loss task.time; *) 
 
 
 
@@ -527,7 +526,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
                       | Stochastic  -> params.batch <- Mini nbs
                       | Full        -> ()
                       in
-                      E.set (string_of_int task.sid ^ "current_bs") params.batch
+                      E.set (string_of_int task.sid ^ "current_bs") params.batch;
 
                       (* Decay learning rate *)
                   (*  let lr = base_lr task in
@@ -541,7 +540,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
                       let nlr = lr *. (exp (-0.1 *. d)) in*)
 
 
-(*                       Owl_log.debug "New Learning Rate: %f" nlr;
+                      Owl_log.debug "New Learning Rate: %f" nlr;
                       match params.learning_rate with
                       | Adagrad _          -> params.learning_rate <- Adagrad nlr
                       | Const _            -> params.learning_rate <- Const nlr
@@ -549,7 +548,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
                       | AdaDelay _         -> params.learning_rate <- AdaDelay nlr
                       | DelayComp (_, v, m)-> params.learning_rate <- DelayComp (nlr, v, m)
                       | _                  -> ()
- *)
+
 
 
                       (* Change momentum. Doesn't work with Adagrad and it's variants. *)
