@@ -298,7 +298,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     )
 
   (* current batch_size for PASP *)
-  let current_bs task =
+  let current_batch_size task =
     let params = task.server_params in
     let k = (string_of_int task.sid ^ "current_bs") in
     try E.get k |> fst
@@ -370,7 +370,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     (* get model, if none then init locally *)
     let model = local_model task in
     let batch_no = task.schedule_no in
-    let cb = current_bs task in
+    let cb = current_batch_size task in
     (* If AdaptiveRevision, record total gradient for worker before schedule.
        If AdaDelay, record current iteration *)
     let tasks = List.mapi (fun i x ->
@@ -493,7 +493,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       in
 
       (* Detect if workers changed *)
-(*       let _ = match workers_changed with
+      let _ = match workers_changed with
         | false ->  ()
         | true  ->  (* Increase batch size *)
                     let bs = base_bs task |> float_of_int in
@@ -504,7 +504,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
                     let d = (w' - w) in
                     Owl_log.debug "Worker count changed to %i" w';
                     let d = float_of_int d in
-                    let nlr = lr *. (exp (-0.075 *. d)) in
+                    let nlr = lr *. (exp (-0.15 *. d)) in
                     let nbs = bs *. (lr /. nlr) |> int_of_float in
                     Owl_log.debug "New Batch Size %i" nbs;
                     (* Check if new batch size affects training *)
@@ -527,7 +527,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
                       | Stochastic  -> params.batch <- Mini nbs
                       | Full        -> ()
                       in
-                      E.set (string_of_int task.sid ^ "current_bs") params.batch; *)
+                      E.set (string_of_int task.sid ^ "current_bs") params.batch
 
                       (* Decay learning rate *)
                   (*  let lr = base_lr task in
@@ -564,7 +564,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
                         | Standard _ -> params.momentum <- Momentum.Standard em
                         | Nesterov _ -> params.momentum <- Momentum.Nesterov em
                         | None -> params.momentum <- Momentum.Standard em *)
-      (* in *)
+      in
       (* Detect if decay expired *)
 (*    let decay = decay_duration task in
       let _ = match (decay <> 0 
