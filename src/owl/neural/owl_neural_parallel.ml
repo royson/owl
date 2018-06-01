@@ -476,10 +476,10 @@ module Make (M : ModelSig) (E : EngineSig) = struct
 
       let current_progression = E.progressive_num () in
       (* Add/Remove workers for PASP barrier every 5 epochs *)
-      let workers_changed = match Checkpoint.(state.current_batch mod (state.batches_per_epoch * 5) = 0) with
+(*       let workers_changed = match Checkpoint.(state.current_batch mod (state.batches_per_epoch * 5) = 0) with
         | false -> false
         (* Progressive mode *)
-        | true  -> E.add_workers current_progression
+        | true  -> E.add_workers current_progression *)
         (* Dynamic mode *)
 (*         | true  -> let b  = Owl_stats.uniform_int_rvs ~a:0 ~b:1 in
                    let aw = Owl_stats.uniform_int_rvs ~a:1 ~b:8 in
@@ -491,7 +491,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
                    | _ -> Owl_log.debug "%i workers attempting to leave." lw;
                           E.remove_workers lw *)
          
-      in
+      (* in *)
 
       (* Detect if workers changed *)
 (*       let _ = match workers_changed with
@@ -645,7 +645,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     E.register_pull (pull server_task);
     E.register_push (push client_task);
     E.register_stop (stop server_task);
-    E.start ~barrier:E.PASP jid url
+    E.start ~barrier:E.ASP jid url
 
 
   let train ?params nn x y tx ty jid url = train_generic ?params nn x y 
