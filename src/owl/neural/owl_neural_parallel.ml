@@ -476,25 +476,24 @@ module Make (M : ModelSig) (E : EngineSig) = struct
 
       let current_progression = E.progressive_num () in
       (* Add/Remove workers for PASP barrier every 5 epochs *)
-(*       let workers_changed = match Checkpoint.(state.current_batch mod (state.batches_per_epoch * 5) = 0) with
+      let workers_changed = match Checkpoint.(state.current_batch mod (state.batches_per_epoch * 5) = 0) with
         | false -> false
         (* Progressive mode *)
-        | true  -> E.add_workers current_progression *)
+        (* | true  -> E.add_workers current_progression *)
         (* Dynamic mode *)
-(*         | true  -> let b  = Owl_stats.uniform_int_rvs ~a:0 ~b:1 in
+        | true  -> let b  = Owl_stats.uniform_int_rvs ~a:0 ~b:1 in
                    let aw = Owl_stats.uniform_int_rvs ~a:1 ~b:8 in
                    let lw = Owl_stats.uniform_int_rvs ~a:1 ~b:8 in
                    match b with
                    | 1 -> Owl_log.debug "%i workers attempting to join." aw;
-                          
                           E.add_workers aw
                    | _ -> Owl_log.debug "%i workers attempting to leave." lw;
-                          E.remove_workers lw *)
+                          E.remove_workers lw
          
-      (* in *)
+      in
 
       (* Detect if workers changed *)
-(*       let _ = match workers_changed with
+      let _ = match workers_changed with
         | false ->  ()
         | true  ->  (* Increase batch size *)
                     let bs = base_bs task |> float_of_int in
@@ -528,7 +527,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
                       | Stochastic  -> params.batch <- Mini nbs
                       | Full        -> ()
                       in
-                      E.set (string_of_int task.sid ^ "current_bs") params.batch; *)
+                      E.set (string_of_int task.sid ^ "current_bs") params.batch;
 
                       (* Decay learning rate *)
                   (*  let lr = base_lr task in
@@ -542,7 +541,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
                       let nlr = lr *. (exp (-0.1 *. d)) in*)
 
 
-(*                       Owl_log.debug "New Learning Rate: %f" nlr;
+                      Owl_log.debug "New Learning Rate: %f" nlr;
                       match params.learning_rate with
                       | Adagrad _          -> params.learning_rate <- Adagrad nlr
                       | Const _            -> params.learning_rate <- Const nlr
@@ -550,7 +549,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
                       | AdaDelay _         -> params.learning_rate <- AdaDelay nlr
                       | DelayComp (_, v, m)-> params.learning_rate <- DelayComp (nlr, v, m)
                       | _                  -> ()
- *)
+
 
 
                       (* Change momentum. Doesn't work with Adagrad and it's variants. *)
@@ -565,7 +564,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
                         | Standard _ -> params.momentum <- Momentum.Standard em
                         | Nesterov _ -> params.momentum <- Momentum.Nesterov em
                         | None       -> params.momentum <- Momentum.Standard em *)
-      (* in *)
+      in
       (* Detect if decay expired *)
 (*    let decay = decay_duration task in
       let _ = match (decay <> 0 
@@ -645,7 +644,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     E.register_pull (pull server_task);
     E.register_push (push client_task);
     E.register_stop (stop server_task);
-    E.start ~barrier:E.ASP jid url
+    E.start ~barrier:E.PASP jid url
 
 
   let train ?params nn x y tx ty jid url = train_generic ?params nn x y 
