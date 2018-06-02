@@ -477,7 +477,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       let current_progression = E.progressive_num () in
       (* Add/Remove workers for PASP barrier every 5 epochs *)
       (* let workers_changed = match Checkpoint.(state.current_batch mod (state.batches_per_epoch * 5) = 0) with *)
-      let workers_changed = match Checkpoint.(state.current_batch mod 125 = 0) with
+      let workers_changed = match Checkpoint.(state.current_batch mod 100 = 0) with
         | false -> false
         (* Progressive mode *)
         (* | true  -> E.add_workers current_progression *)
