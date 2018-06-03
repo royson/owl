@@ -467,7 +467,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       in
 
       (* Determine if training ends *)
-      let _ = match task.patience >= 80 || loss' < 0.05 with 
+      let _ = match task.patience >= 40 || loss' < 0.05 with 
       | false -> ()
       | true  -> Owl_log.info "Early stopping..";
                  Checkpoint.(state.stop <- true)
@@ -482,14 +482,14 @@ module Make (M : ModelSig) (E : EngineSig) = struct
         (* Progressive mode *)
         (* | true  -> E.add_workers current_progression *)
         (* Dynamic mode *)
-        | true  -> let b  = Owl_stats.uniform_int_rvs ~a:0 ~b:1 in
+        | true  -> let b  = Owl_stats.uniform_int_rvs ~a:0 ~b:3 in
                    let aw = Owl_stats.uniform_int_rvs ~a:1 ~b:8 in
-                   let lw = Owl_stats.uniform_int_rvs ~a:1 ~b:8 in
+                   let lw = Owl_stats.uniform_int_rvs ~a:1 ~b:2 in
                    match b with
-                   | 1 -> Owl_log.debug "%i workers attempting to join." aw;
-                          E.add_workers aw
-                   | _ -> Owl_log.debug "%i workers attempting to leave." lw;
+                   | 3 -> Owl_log.debug "%i workers attempting to leave." lw;
                           E.remove_workers lw
+                   | _ -> Owl_log.debug "%i workers attempting to join." aw;
+                          E.add_workers aw
          
       in
 
