@@ -482,7 +482,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
         (* Progressive mode *)
         (* | true  -> E.add_workers current_progression *)
         (* Dynamic mode *)
-        | true  -> let b  = Owl_stats.uniform_int_rvs ~a:0 ~b:3 in
+        | true  -> let b  = Owl_stats.uniform_int_rvs ~a:0 ~b:7 in
                    let aw = Owl_stats.uniform_int_rvs ~a:1 ~b:8 in
                    let lw = Owl_stats.uniform_int_rvs ~a:1 ~b:2 in
                    match b with
