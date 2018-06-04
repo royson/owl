@@ -246,6 +246,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     (* take the mean of the loss *)
     let loss = Maths.(loss / (F (Mat.row_num yt |> float_of_int))) in
     Owl_log.debug "Validation Loss = %.6f." (unpack_flt loss);
+    Gc.minor ();
     unpack_flt loss 
 
   (* retrieve local model at parameter server, init if none *)
