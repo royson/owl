@@ -482,11 +482,11 @@ module Make (M : ModelSig) (E : EngineSig) = struct
         (* Progressive mode *)
         (* | true  -> E.add_workers current_progression *)
         (* Dynamic mode *)
-        | true  -> let b  = Owl_stats.uniform_int_rvs ~a:0 ~b:10 in
+        | true  -> let b  = Owl_stats.uniform_int_rvs ~a:0 ~b:4 in
                    let aw = Owl_stats.uniform_int_rvs ~a:1 ~b:8 in
                    let lw = Owl_stats.uniform_int_rvs ~a:1 ~b:8 in
                    match b with
-                   | 9 -> Owl_log.debug "%i workers attempting to leave." 1;
+                   | 1 -> Owl_log.debug "%i workers attempting to leave." 2;
                           E.remove_workers 1
                    | _ -> Owl_log.debug "%i workers attempting to join." aw;
                           E.add_workers aw
