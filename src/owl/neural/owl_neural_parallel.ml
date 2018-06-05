@@ -453,8 +453,6 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       task.time <- t :: task.time;
       plot_loss_time "loss.png" task.loss task.time; *) 
 
-
-
       (* Calculate Validation loss every epoch *)
       let _ = match Checkpoint.(state.current_batch mod (state.batches_per_epoch) = 0) with
         | false ->  ()
@@ -468,7 +466,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       in
 
       (* Determine if training ends *)
-      let _ = match task.patience >= 40 || loss' < 0.05 with 
+      let _ = match task.patience >= 80 || loss' < 0.05 with 
       | false -> ()
       | true  -> Owl_log.info "Early stopping..";
                  Checkpoint.(state.stop <- true)
@@ -478,6 +476,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       let current_progression = E.progressive_num () in
       (* Add/Remove workers for PASP barrier every 5 epochs *)
       (* let workers_changed = match Checkpoint.(state.current_batch mod (state.batches_per_epoch * 5) = 0) with *)
+      (* Add/Remove workers for PASP barrier every 100 iterations *)
       let workers_changed = match Checkpoint.(state.current_batch mod 100 = 0) with
         | false -> false
         (* Progressive mode *)
@@ -506,7 +505,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
                     let d = (w' - w) in
                     Owl_log.debug "Worker count changed to %i" w';
                     let d = float_of_int d in
-                    let nlr = lr *. (exp (-0.15 *. d)) in
+                    let nlr = lr *. (exp (-0.2 *. d)) in
                     let nbs = bs *. (lr /. nlr) |> int_of_float in
                     Owl_log.debug "New Batch Size %i" nbs;
                     (* Check if new batch size affects training *)
