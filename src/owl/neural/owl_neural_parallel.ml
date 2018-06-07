@@ -482,14 +482,14 @@ module Make (M : ModelSig) (E : EngineSig) = struct
         (* Progressive mode *)
         (* | true  -> E.add_workers current_progression *)
         (* Dynamic mode *)
-        | true  -> let b  = Owl_stats.uniform_int_rvs ~a:0 ~b:4 in
+        | true  -> let b  = Owl_stats.uniform_int_rvs ~a:0 ~b:1 in
                    let aw = Owl_stats.uniform_int_rvs ~a:1 ~b:8 in
                    let lw = Owl_stats.uniform_int_rvs ~a:1 ~b:8 in
                    match b with
-                   | 1 -> Owl_log.debug "%i workers attempting to leave." 2;
-                          E.remove_workers 1
-                   | _ -> Owl_log.debug "%i workers attempting to join." aw;
+                   | 1 -> Owl_log.debug "%i workers attempting to join." aw;
                           E.add_workers aw
+                   | _ -> Owl_log.debug "%i workers attempting to leave." lw;
+                          E.remove_workers lw
          
       in
 
@@ -530,7 +530,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
                       in
                       E.set (string_of_int task.sid ^ "current_bs") params.batch;
 
-                      (* Decay learning rate *)
+                      (* Decay learning rate. For experimental purposes. *)
                   (*  let lr = base_lr task in
                       let w  = base_workers task in
                       let w' = E.progressive_num () in
@@ -566,7 +566,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
                         | Nesterov _ -> params.momentum <- Momentum.Nesterov em
                         | None       -> params.momentum <- Momentum.Standard em *)
       in
-      (* Detect if decay expired *)
+      (* Detect if decay expired. For experimental purposes. *)
 (*    let decay = decay_duration task in
       let _ = match (decay <> 0 
                     && Checkpoint.(state.current_batch mod (state.batches_per_epoch * 1 + decay) = 0)) with
