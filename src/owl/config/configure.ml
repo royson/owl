@@ -48,7 +48,7 @@ let get_default_libs c =
     "-lm";
   ] in
   get_os_type c |> function
-  | ("linux"|"linux_elf") -> "-llapacke" :: ls
+  | ("linux"|"linux_elf") -> ls
   | (""|"macosx"|"mingw64") -> ls
   | s -> failwith ("get_default_libs: unknown system "^s)
 
