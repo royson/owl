@@ -53,8 +53,14 @@ module type Sig = sig
   val get_node : network -> string -> node
   (** Get a node in a network with the given name. *)
 
-  val get_network : node -> network
+  val get_network : ?name:string -> node -> network
   (** Get the neural network of a given node associated with. *)
+
+  val get_network_name : network -> string
+  (** ``get_network_name n`` returns the name of the network ``n``. *)
+
+  val set_network_name : network -> string -> unit
+  (** ``set_network_name n s`` sets the name of the network ``n`` to ``s``. *)
 
   val collect_output : node array -> t array
   (** Collect the output values of given nodes. *)
@@ -67,6 +73,9 @@ module type Sig = sig
 
   val add_node : ?act_typ:Activation.typ -> network -> node array -> node -> node
   (** Add a node to the given network. *)
+
+  val input_shape : network -> int array
+  (** Get input shape of a network (without batch dimension), i.e. shape of input neruon. *)
 
 
   (** {6 Interface to optimisation engine} *)
@@ -165,59 +174,88 @@ Arguments:
 
   val conv1d : ?name:string -> ?padding:Owl_types.padding -> ?init_typ:Init.typ -> ?act_typ:Activation.typ -> int array -> int array -> node -> node
   (**
-``conv1d kernels strides node`` adds a 1D convolution node (e.g. temporal
+``conv1d kernel stride node`` adds a 1D convolution node (e.g. temporal
 convolution) on previous ``node``.
 
 Arguments:
   * ``kernel``: int array consists of ``h, i, o``. ``h`` specifies the dimension of the 1D convolution window. ``i`` and ``o`` are the dimensionalities of the input and output space.
-  * ``stride``: int array of 1 integer
+  * ``stride``: int array of 1 integer.
   *)
 
   val conv2d : ?name:string -> ?padding:Owl_types.padding -> ?init_typ:Init.typ -> ?act_typ:Activation.typ -> int array -> int array -> node -> node
   (**
-``conv2d kernels strides node`` adds a 2D convolution node (e.g. spatial convolution over images) on previous ``node``.
+``conv2d kernel stride node`` adds a 2D convolution node (e.g. spatial convolution over images) on previous ``node``.
 
 Arguments:
   * ``kernel``: int array consists of ``w, h, i, o``. ``w`` and ``h`` specify the width and height of the 2D convolution window. ``i`` and ``o`` are the dimensionality of the input and output space.
-  * ``stride``: int array of 2 integers
+  * ``stride``: int array of 2 integers.
   *)
 
   val conv3d : ?name:string -> ?padding:Owl_types.padding -> ?init_typ:Init.typ -> ?act_typ:Activation.typ -> int array -> int array -> node -> node
   (**
-``conv3d kernels strides node`` adds a 3D convolution node (e.g. spatial
+``conv3d kernel stride node`` adds a 3D convolution node (e.g. spatial
 convolution over volumes) on previous ``node``.
 
 Arguments:
   * ``kernel``: int array consists of ``w, h, d, i, o``. ``w``, ``h``, and ``d`` specify the 3 dimensionality of the 3D convolution window. ``i`` and ``o`` are the dimensionality of the input and output space.
-  * ``stride``: int array of 3 integers
+  * ``stride``: int array of 3 integers.
   *)
 
-
-  val transpose_conv1d : ?name:string -> ?padding:Owl_types.padding -> ?init_typ:Init.typ -> ?act_typ:Activation.typ -> int array -> int array -> node -> node
+  val dilated_conv1d : ?name:string -> ?padding:Owl_types.padding -> ?init_typ:Init.typ -> ?act_typ:Activation.typ -> int array -> int array -> int array -> node -> node
   (**
-``transpose_conv1d kernels strides node`` adds a 1D transpose convolution node (e.g. temporal convolution) on previous ``node``.
+``dilated_conv1d kernel stride rate node`` adds a 1D dilated convolution node (e.g. temporal convolution) on previous ``node``.
 
 Arguments:
   * ``kernel``: int array consists of ``h, i, o``. ``h`` specifies the dimension of the 1D convolution window. ``i`` and ``o`` are the dimensionalities of the input and output space.
-  * ``stride``: int array of 1 integer
+  * ``stride``: int array of 1 integer.
+  * ``rate``: int array of 1 integer.
+  *)
+
+  val dilated_conv2d : ?name:string -> ?padding:Owl_types.padding -> ?init_typ:Init.typ -> ?act_typ:Activation.typ -> int array -> int array -> int array -> node -> node
+  (**
+``dilated_conv2d kernel stride rate node`` adds a 2D dilated convolution node (e.g. spatial convolution over images) on previous ``node``.
+
+Arguments:
+  * ``kernel`: int array consists of ``w, h, i, o``. ``w`` and ``h`` specify the width and height of the 2D convolution window. ``i`` and ``o`` are the dimensionality of the input and output space.
+  * ``stride``: int array of 2 integers.
+  * ``rate``: int array of 2 integers.
+  *)
+
+  val dilated_conv3d : ?name:string -> ?padding:Owl_types.padding -> ?init_typ:Init.typ -> ?act_typ:Activation.typ -> int array -> int array -> int array -> node -> node
+  (**
+``dilated_conv3d kernel stride rate node`` adds a 3D dilated convolution node (e.g. spatial convolution over volumes) on previous ``node``.
+
+Arguments:
+  * ``kernel``: int array consists of ``w, h, d, i, o``. ``w``, ``h``, and ``d`` specify the 3 dimensionality of the 3D convolution window. ``i`` and ``o`` are the dimensionality of the input and output space.
+  * ``stride``: int array of 3 integers.
+  * ``rate``: int array of 3 integers.
+  *)
+
+  val transpose_conv1d : ?name:string -> ?padding:Owl_types.padding -> ?init_typ:Init.typ -> ?act_typ:Activation.typ -> int array -> int array -> node -> node
+  (**
+``transpose_conv1d kernel stride node`` adds a 1D transpose convolution node (e.g. temporal convolution) on previous ``node``.
+
+Arguments:
+  * ``kernel``: int array consists of ``h, i, o``. ``h`` specifies the dimension of the 1D convolution window. ``i`` and ``o`` are the dimensionalities of the input and output space.
+  * ``stride``: int array of 1 integer.
   *)
 
   val transpose_conv2d : ?name:string -> ?padding:Owl_types.padding -> ?init_typ:Init.typ -> ?act_typ:Activation.typ -> int array -> int array -> node -> node
   (**
-``transpose_conv2d kernels strides node`` adds a 2D transpose convolution node on previous ``node``.
+``transpose_conv2d kernel stride node`` adds a 2D transpose convolution node on previous ``node``.
 
 Arguments:
   * ``kernel``: int array consists of ``w, h, i, o``. ``w`` and ``h`` specify the width and height of the 2D convolution window. ``i`` and ``o`` are the dimensionality of the input and output space.
-  * ``stride``: int array of 2 integers
+  * ``stride``: int array of 2 integers.
   *)
 
   val transpose_conv3d : ?name:string -> ?padding:Owl_types.padding -> ?init_typ:Init.typ -> ?act_typ:Activation.typ -> int array -> int array -> node -> node
   (**
-``transpose_conv3d kernels strides node`` adds a 3D transpose convolution node (e.g. spatial convolution over volumes) on previous ``node``.
+``transpose_conv3d kernel stride node`` adds a 3D transpose convolution node (e.g. spatial convolution over volumes) on previous ``node``.
 
 Arguments:
   * ``kernel``: int array consists of ``w, h, d, i, o``. ``w``, ``h``, and ``d`` specify the 3 dimensionality of the 3D convolution window. ``i`` and ``o`` are the dimensionality of the input and output space.
-  * ``stride``: int array of 3 integers
+  * ``stride``: int array of 3 integers.
   *)
 
   val fully_connected : ?name:string -> ?init_typ:Init.typ -> ?act_typ:Activation.typ -> int -> node -> node
@@ -225,46 +263,46 @@ Arguments:
 ``fully_connected outputs node`` adds a fully connected node to ``node``.
 
 Arguments:
-  * ``outputs``: integer, the number of output units in the node
+  * ``outputs``: integer, the number of output units in the node.
   *)
 
   val max_pool1d : ?name:string -> ?padding:Owl_types.padding -> ?act_typ:Activation.typ -> int array -> int array -> node -> node
   (**
-``max_pool1d ~padding ~act_typ pool_size strides node`` adds a max pooling
+``max_pool1d ~padding ~act_typ pool_size stride node`` adds a max pooling
 operation for temporal data to ``node``.
 
 Arguments:
   * ``pool_size``: Array of one integer, size of the max pooling windows.
-  * ``strides``: Array of one integer, factor by which to downscale.
+  * ``stride``: Array of one integer, factor by which to downscale.
   *)
 
   val max_pool2d : ?name:string -> ?padding:Owl_types.padding -> ?act_typ:Activation.typ -> int array -> int array -> node -> node
   (**
-``max_pool2d ~padding ~act_typ pool_size strides node`` adds a max pooling
+``max_pool2d ~padding ~act_typ pool_size stride node`` adds a max pooling
 operation for spatial data to ``node``.
 
 Arguments:
   * ``pool_size``: Array of 2 integers, size of the max pooling windows.
-  * ``strides``: Array of 2 integers, factor by which to downscale.
+  * ``stride``: Array of 2 integers, factor by which to downscale.
   *)
 
   val avg_pool1d : ?name:string -> ?padding:Owl_types.padding -> ?act_typ:Activation.typ -> int array -> int array -> node -> node
   (**
-``avg_pool1d ~padding ~act_typ pool_size strides node`` adds a average pooling
+``avg_pool1d ~padding ~act_typ pool_size stride node`` adds a average pooling
 operation for temporal data to ``node``.
 
 Arguments:
   * ``pool_size``: Array of one integer, size of the max pooling windows.
-  * ``strides``: Array of one integer, factor by which to downscale.
+  * ``stride``: Array of one integer, factor by which to downscale.
   *)
 
   val avg_pool2d : ?name:string -> ?padding:Owl_types.padding -> ?act_typ:Activation.typ -> int array -> int array -> node -> node
   (**
-``avg_pool2d ~padding ~act_typ pool_size strides node`` adds a average pooling operation for spatial data to ``node``.
+``avg_pool2d ~padding ~act_typ pool_size stride node`` adds a average pooling operation for spatial data to ``node``.
 
 Arguments:
   * ``pool_size``: Array of 2 integers, size of the max pooling windows.
-  * ``strides``: Array of 2 integers, factor by which to downscale.
+  * ``stride``: Array of 2 integers, factor by which to downscale.
   *)
 
   val global_max_pool1d : ?name:string -> ?act_typ:Activation.typ -> node -> node

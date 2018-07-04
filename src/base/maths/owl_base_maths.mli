@@ -136,5 +136,24 @@ val is_simplex : float array -> bool
 :math:`\sum_i^K x_i = 1` and :math:`x_i \ge 0, \forall x_i \in [1,K]`.
  *)
 
+val is_int : float -> bool
+(* ``is_int x`` checks if ``x`` is an integer, i.e. fractional part is zero. *)
+
+val is_sqr : int -> bool
+(** ``is_sqr x`` checks if ``x`` is the square of an integer. *)
+
+val is_prime : int -> bool
+(**
+``is_prime x`` returns ``true`` if ``x`` is a prime number. The function is
+deterministic for numbers below 341550071728321, then becomes probabilistic
+for those above. The function uses Rabin–Miller primality test.
+*)
+
+val fermat_fact : int -> int * int
+(**
+``fermat_fact x`` performs Fermat factorisation over ``x``, i.e. into two
+roughly equal factors. ``x`` must be an odd number.
+ *)
+
 
 (* ends here *)

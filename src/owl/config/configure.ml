@@ -33,6 +33,8 @@ let get_ocaml_devmode_flags c =
 let get_default_cflags c = [
   (* Basic optimisation *)
   "-g"; "-O3"; "-Ofast";
+  (* FIXME: experimental switches *)
+  (* "-mavx2"; "-mfma"; "-ffp-contract=fast"; *)
   (* Experimental switches, -ffast-math may break IEEE754 semantics*)
   "-march=native"; "-mfpmath=sse"; "-funroll-loops"; "-ffast-math";
   (* Configure Mersenne Twister RNG *)
@@ -46,7 +48,7 @@ let get_default_libs c =
     "-lm";
   ] in
   get_os_type c |> function
-  | ("linux"|"linux_elf") -> "-llapacke" :: ls
+  | ("linux"|"linux_elf") -> ls
   | (""|"macosx"|"mingw64") -> ls
   | s -> failwith ("get_default_libs: unknown system "^s)
 

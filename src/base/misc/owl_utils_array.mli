@@ -87,6 +87,14 @@ val stable_sort : ('a -> 'a -> int) -> 'a array -> unit
 val fast_sort : ('a -> 'a -> int) -> 'a array -> unit
 (** Refer to OCaml native array. *)
 
+val sort_fill : ?min:int -> ?max:int -> ?fill:int -> int array -> int array
+(**
+``sort_fill ~min ~max ~fill x`` first sorts ``x``, then expands it to an array
+of length ``max - min + 1``, and fills the holes with ``fill``. E.g.,
+``sort_fill ~min:1 ~max:5 ~fill:0 [|4;2|] x`` returns a new array as follows:
+``[|1; 0; 2; 0; 4; 5|]``.
+ *)
+
 val unsafe_get : 'a array -> int -> 'a
 (** Refer to OCaml native array. *)
 
@@ -113,6 +121,9 @@ of the elements in ``y`` based on the slice definition ``slice``. Please refer
 to ``get_slice`` function for the information on the format of slice definiton.
  *)
 
+val flatten : 'a array array -> 'a array
+(** Flatten an array array into an array. *)
+
 val set_n : 'a array -> int array -> 'a -> unit
 (** TODO *)
 
@@ -124,6 +135,12 @@ val count : 'a array -> 'a -> int
 
 val insert : 'a array -> 'a array -> int -> 'a array
 (** TODO *)
+
+val unique : 'a array -> 'a array
+(** ``unique x`` removes the duplicates in the array ``x``. *)
+
+val merge : 'a array -> 'a array -> 'a array
+(** ``merge x y`` merges two arrays and removes the duplicates. *)
 
 val remove : 'a array -> int -> 'a array
 (** TODO *)
@@ -149,10 +166,28 @@ val iter3i : (int -> 'a -> 'b -> 'c -> 'd) -> 'a array -> 'b array -> 'c array -
 val iter3 : ('a -> 'b -> 'c -> 'd) -> 'a array -> 'b array -> 'c array -> unit
 (** TODO *)
 
+val iter4i : (int -> 'a -> 'b -> 'c -> 'd -> unit) -> 'a array -> 'b array -> 'c array -> 'd array -> unit
+(** TODO *)
+
+val iter4 : ('a -> 'b -> 'c -> 'd -> unit) -> 'a array -> 'b array -> 'c array -> 'd array -> unit
+(** TODO *)
+
 val map2i : (int -> 'a -> 'b -> 'c) -> 'a array -> 'b array -> 'c array
 (** TODO *)
 
 val map2i_split2 : (int -> 'a -> 'b -> 'c * 'd) -> 'a array -> 'b array -> 'c array * 'd array
+(** TODO *)
+
+val map3i : (int -> 'a -> 'b -> 'c -> 'd) -> 'a array -> 'b array -> 'c array -> 'd array
+(** TODO *)
+
+val map3 : ('a -> 'b -> 'c -> 'd) -> 'a array -> 'b array -> 'c array -> 'd array
+(** TODO *)
+
+val map4i : (int -> 'a -> 'b -> 'c -> 'd -> 'e) -> 'a array -> 'b array -> 'c array -> 'd array -> 'e array
+(** TODO *)
+
+val map4 : ('a -> 'b -> 'c -> 'd -> 'e) -> 'a array -> 'b array -> 'c array -> 'd array -> 'e array
 (** TODO *)
 
 val filteri_v : (int -> 'a -> bool * 'b) -> 'a array -> 'b array
@@ -192,11 +227,22 @@ val filter2_i : ('a -> 'b -> bool) -> 'a array -> 'b array -> int array
 the elements to function ``f``.
  *)
 
+val filter2_split : ('a -> 'b -> bool) -> 'a array -> 'b array -> 'a array * 'b array
+(**
+``filter2_split f x y`` is similar to ``filter2 f x y``, but the returned
+results are two separated arrays rather than merging into one tuple array.
+ *)
+
 val resize : ?head:bool -> 'a -> int -> 'a array -> 'a array
 (**
 ``resize ~head v n x`` resizes ``x`` of length ``m`` to length ``n``. If
 ``m <= n``, a copy of ``x`` subarray is returned. If ``m > n``, then ``x`` is
 extended, the extra space is filled with value ``v``.
+ *)
+
+val fold2: ('a -> 'b -> 'c -> 'a) -> 'a -> 'b array -> 'c array -> 'a
+(**
+``fold2 a x y`` folds both ``x`` and ``y`` from left with starting value ``a``.
  *)
 
 val pad : [ `Left | `Right ] -> 'a -> int -> 'a array -> 'a array
@@ -207,6 +253,9 @@ val align : [ `Left | `Right ] -> 'a -> 'a array -> 'a array -> 'a array * 'a ar
 ``align side v x y`` aligns two arrays ``x`` and ``y`` along the specified side
 with value ``v``. The copies of two arrays are returned.
  *)
+
+val align3 : [ `Left | `Right ] -> 'a -> 'a array -> 'a array -> 'a array -> 'a array * 'a array * 'a array
+(** ``align3 side v x y z`` aligns three arrays ``x``, ``y``, and ``z``. *)
 
 val greater_eqaul : 'a array -> 'a array -> bool
 (** TODO *)
@@ -221,7 +270,7 @@ val of_tuples : ('a * 'a) array -> 'a array
 (** TODO *)
 
 val complement : 'a array -> 'a array -> 'a array
-(** TODO *)
+(* Given set x and y, return complement of y, i.e. x \ y *)
 
 val balance_last : float -> float array -> float array
 (**
@@ -232,6 +281,14 @@ length of ``x``, if ``i < l - 1``, then ``x.(i) = x.(i)``, otherwise
 
 val index_of : 'a array -> 'a -> int
 (** ``index_of x a`` returns the index of first occurrence of ``a`` in ``x``. *)
+
+val bsearch : cmp:('a -> 'a -> int) -> 'a  -> 'a array -> int
+(**
+Binary search. ``bsearch cmp x a`` returns the index of the largest value
+in the sorted array ``a`` less than or equal to ``x``, according to the
+comparison function ``cmp``. If ``x`` is smaller than all elements, returns -1.
+The function raises an exception if ``a`` is empty.
+*)
 
 val to_string : ?prefix:string -> ?suffix:string -> ?sep:string -> ('a -> string) -> 'a array -> string
 (** TODO *)

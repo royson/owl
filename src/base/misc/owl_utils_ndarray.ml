@@ -44,7 +44,7 @@ let elt_of_str : type a b. (a, b) kind -> (string -> a) = function
 let numel x = Array.fold_right (fun c a -> c * a) (Genarray.dims x) 1
 
 
-(* calculate the stride of a ndarray, s is the shape
+(* calculate the stride of a ndarray, s is the shape.
   for [x] of shape [|2;3;4|], the return is [|12;4;1|]
  *)
 let calc_stride s =
@@ -125,6 +125,18 @@ let reduce_params a x =
   let o = _stride.(a) in
   _shape.(a) <- 1;
   m, n, o, _shape
+
+
+(* check whether two shapes are broadcastable *)
+let broadcastable s0 s1 =
+  let sa, sb = Owl_utils_array.align `Left 1 s0 s1 in
+  try (
+    Array.iter2 (fun a b ->
+      Owl_exception.(check (not(a <> 1 && b <> 1 && a <> b)) NOT_BROADCASTABLE);
+    ) sa sb;
+    true
+  )
+  with exn -> false
 
 
 (* ends here *)

@@ -9,9 +9,14 @@ open Owl_types_common
 
 module type Sig = sig
 
+  (* types and constants *)
+
   type arr
 
-  type elt = float
+  type elt
+
+  val number : number
+
 
   (* creation and operation functions *)
 
@@ -47,6 +52,8 @@ module type Sig = sig
 
   val copy : arr -> arr
 
+  val copy_ : out:arr -> arr -> unit  (* FIXME: move to mutable? *)
+
   val reset : arr -> unit
 
   val reshape : arr -> int array -> arr
@@ -69,7 +76,10 @@ module type Sig = sig
 
   val scan : ?axis:int -> (elt -> elt -> elt) -> arr -> arr
 
+  val one_hot : int -> arr -> arr
+
   val print : ?max_row:int -> ?max_col:int -> ?header:bool -> ?fmt:(elt -> string) -> arr -> unit
+
 
   (* mathematical functions *)
 
@@ -185,10 +195,8 @@ module type Sig = sig
 
   val scalar_div : elt -> arr -> arr
 
-  (* FIXME *)
-  val equal : arr -> arr -> bool
+  val fma : arr -> arr -> arr -> arr
 
-  val elt_greater_equal_scalar : arr -> elt -> arr
 
   (* Neural network related functions *)
 
@@ -197,6 +205,12 @@ module type Sig = sig
   val conv2d : ?padding:padding -> arr -> arr -> int array -> arr
 
   val conv3d : ?padding:padding -> arr -> arr -> int array -> arr
+
+  val dilated_conv1d : ?padding:padding -> arr -> arr -> int array -> int array -> arr
+
+  val dilated_conv2d : ?padding:padding -> arr -> arr -> int array -> int array -> arr
+
+  val dilated_conv3d : ?padding:padding -> arr -> arr -> int array -> int array -> arr
 
   val transpose_conv1d : ?padding:padding -> arr -> arr -> int array -> arr
 
@@ -228,6 +242,18 @@ module type Sig = sig
 
   val conv3d_backward_kernel : arr -> arr -> int array -> arr -> arr
 
+  val dilated_conv1d_backward_input : arr -> arr -> int array -> int array -> arr -> arr
+
+  val dilated_conv1d_backward_kernel : arr -> arr -> int array -> int array -> arr -> arr
+
+  val dilated_conv2d_backward_input : arr -> arr -> int array -> int array -> arr -> arr
+
+  val dilated_conv2d_backward_kernel : arr -> arr -> int array -> int array -> arr -> arr
+
+  val dilated_conv3d_backward_input : arr -> arr -> int array -> int array -> arr -> arr
+
+  val dilated_conv3d_backward_kernel : arr -> arr -> int array -> int array -> arr -> arr
+
   val transpose_conv1d_backward_input : arr -> arr -> int array -> arr -> arr
 
   val transpose_conv1d_backward_kernel : arr -> arr -> int array -> arr -> arr
@@ -251,6 +277,7 @@ module type Sig = sig
   val avg_pool2d_backward : padding -> arr -> int array -> int array -> arr -> arr
 
   val avg_pool3d_backward : padding -> arr -> int array -> int array -> arr -> arr
+
 
   (* matrix functions *)
 
@@ -281,5 +308,13 @@ module type Sig = sig
   val of_array : elt array -> int array -> arr
 
   val of_arrays : elt array array -> arr
+
+
+  (* helper functions *)
+
+  val float_to_elt : float -> elt
+
+  val elt_to_float : elt -> float
+
 
 end

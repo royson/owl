@@ -12,6 +12,7 @@ let () =
     "sparse matrix",        Unit_sparse_matrix.test_set;
     "sparse ndarray",       Unit_sparse_ndarray.test_set;
     "ndarray primitive",    Unit_ndarray_primitive.test_set;
+    "ndarray core",         Unit_ndarray_core.test_set;
     "lazy evaluation",      Unit_lazy.test_set;
     "linear algebra",       Unit_linalg.test_set;
     "slicing basic",        Unit_slicing_basic.test_set;
@@ -20,6 +21,12 @@ let () =
     "pooling3d",            Unit_pool3d.test_set;
     "conv2d",               Unit_conv2d.test_set;
     "conv3d",               Unit_conv3d.test_set;
+    "conv2d_mec",           Unit_conv_mec_naive.Conv2D_MEC.test_set;
+    "conv3d_mec",           Unit_conv_mec_naive.Conv3D_MEC.test_set;
+    "conv2d_naive",         Unit_conv_mec_naive.Conv2D_NAIVE.test_set;
+    "conv3d_naive",         Unit_conv_mec_naive.Conv3D_NAIVE.test_set;
+    "dilated_conv2d",       Unit_dilated_conv2d.test_set;
+    "dilated_conv3d",       Unit_dilated_conv3d.test_set;
     "transpose_conv2d",     Unit_transpose_conv2d.test_set;
     "transpose_conv3d",     Unit_transpose_conv3d.test_set;
     "learning rate",        Unit_learning_rate.test_set;
@@ -33,4 +40,5 @@ let () =
     "base: view",           Unit_view.test_set;
     "base: maths_root",     Unit_maths_root.test_set;
     "base: complex",        Unit_base_complex.test_set;
+    "base: ndarray core",   Unit_base_ndarray_core.test_set;
   ]

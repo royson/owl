@@ -106,7 +106,7 @@ let create devs code =
     Hashtbl.add command_queue dev cmdq;
   ) devs;
 
-  let core_src = Owl_opencl_kernel_common.code () in
+  let core_src = Owl_opencl_kernel.code () in
   let prog_src = Array.append [|core_src|] code in
   let prog = Program.create_with_source ctx prog_src in
   Owl_opencl_base.Program.build prog devs;
@@ -129,9 +129,18 @@ let get_cmdq ctx dev = Hashtbl.find ctx.command_queue dev
 let default =
   let devs = gpu_devices () in
   let code = [||] in
-  Owl_log.info "OpenCL: initialising context ...";
+  Owl_log.info "OpenCL: initialising default context ...";
   let ctx = create devs code in
-  Owl_log.info "OpenCL: finished initialisation.";
+
+  let num_dev = Array.length devs in
+  let num_kernel = Array.length (kernels ctx) in
+  Owl_log.info "OpenCL: %i kernels compiled for %i devices." num_kernel num_dev;
+
+  Array.iteri (fun dev_id dev ->
+    let dev_name = (Device.get_info dev).name in
+    Owl_log.info "OpenCL: device #%i: %s" dev_id dev_name
+  ) devs;
+
   ctx
 
 
@@ -152,21 +161,23 @@ let eval ?(param=[||]) ?(ctx=default) ?(dev_id=0) ?(work_dim=1) ?(work_size=[||]
       )
     | F32 a_val -> (
         if !work_sz = [] then work_sz := [Owl_dense_ndarray_generic.numel a_val];
-        let a_mem = Buffer.create ~flags:[cl_MEM_USE_HOST_PTR] opencl_ctx a_val in
+        let a_mem = Buffer.create_bigarray ~flags:[cl_MEM_USE_HOST_PTR] opencl_ctx a_val in
         let a_ptr = Ctypes.allocate cl_mem a_mem in
         Owl_opencl_base.Kernel.set_arg kernel i sizeof_cl_mem a_ptr;
       )
     | F64 a_val -> (
         if !work_sz = [] then work_sz := [Owl_dense_ndarray_generic.numel a_val];
-        let a_mem = Buffer.create ~flags:[cl_MEM_USE_HOST_PTR] opencl_ctx a_val in
+        let a_mem = Buffer.create_bigarray ~flags:[cl_MEM_USE_HOST_PTR] opencl_ctx a_val in
         let a_ptr = Ctypes.allocate cl_mem a_mem in
         Owl_opencl_base.Kernel.set_arg kernel i sizeof_cl_mem a_ptr;
       )
   ) param;
 
   (* execute kernel *)
-  let _ = Kernel.enqueue_ndrange cmdq kernel work_dim !work_sz in
-  CommandQueue.finish cmdq
+  let _ =
+    Kernel.enqueue_ndrange cmdq kernel work_dim !work_sz in
+    CommandQueue.finish cmdq
+
 
 
 (* end here *)

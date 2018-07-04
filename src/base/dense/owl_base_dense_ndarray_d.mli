@@ -7,9 +7,14 @@ open Bigarray
 
 open Owl_types_common
 
+
+(* types and constants *)
+
 type arr = (float, float64_elt, c_layout) Genarray.t
 
 type elt = float
+
+val number : number
 
 
 (* creation and operation functions *)
@@ -52,6 +57,8 @@ val set_slice : int list list -> arr -> arr -> unit
 
 val copy : arr -> arr
 
+val copy_ : out:arr -> arr -> unit
+
 val reset : arr -> unit
 
 val reshape : arr -> int array -> arr
@@ -69,6 +76,8 @@ val concatenate : ?axis:int -> arr array -> arr
 val split : ?axis:int -> int array -> arr -> arr array
 
 val draw : ?axis:int -> arr -> int -> arr * int array
+
+val one_hot : int -> arr -> arr
 
 val print : ?max_row:int -> ?max_col:int -> ?header:bool -> ?fmt:(elt -> string) -> arr -> unit
 
@@ -187,6 +196,9 @@ val scalar_sub : elt -> arr -> arr
 val scalar_mul : elt -> arr -> arr
 
 val scalar_div : elt -> arr -> arr
+
+val fma : arr -> arr -> arr -> arr
+
 
 (** {6 Iterate array elements}  *)
 
@@ -339,6 +351,7 @@ val approx_elt_equal : ?eps:float -> arr -> arr -> arr
 val approx_elt_equal_scalar : ?eps:float -> arr -> float -> arr
 (** Refer to :doc:`owl_dense_ndarray_generic` *)
 
+
 (* Neural network related functions *)
 
 val conv1d : ?padding:padding -> arr -> arr -> int array -> arr
@@ -346,6 +359,12 @@ val conv1d : ?padding:padding -> arr -> arr -> int array -> arr
 val conv2d : ?padding:padding -> arr -> arr -> int array -> arr
 
 val conv3d : ?padding:padding -> arr -> arr -> int array -> arr
+
+val dilated_conv1d : ?padding:padding -> arr -> arr -> int array -> int array -> arr
+
+val dilated_conv2d : ?padding:padding -> arr -> arr -> int array -> int array -> arr
+
+val dilated_conv3d : ?padding:padding -> arr -> arr -> int array -> int array -> arr
 
 val transpose_conv1d : ?padding:padding -> arr -> arr -> int array -> arr
 
@@ -376,6 +395,18 @@ val conv2d_backward_kernel : arr -> arr -> int array -> arr -> arr
 val conv3d_backward_input : arr -> arr -> int array -> arr -> arr
 
 val conv3d_backward_kernel : arr -> arr -> int array -> arr -> arr
+
+val dilated_conv1d_backward_input : arr -> arr -> int array -> int array -> arr -> arr
+
+val dilated_conv1d_backward_kernel : arr -> arr -> int array -> int array -> arr -> arr
+
+val dilated_conv2d_backward_input : arr -> arr -> int array -> int array -> arr -> arr
+
+val dilated_conv2d_backward_kernel : arr -> arr -> int array -> int array -> arr -> arr
+
+val dilated_conv3d_backward_input : arr -> arr -> int array -> int array -> arr -> arr
+
+val dilated_conv3d_backward_kernel : arr -> arr -> int array -> int array -> arr -> arr
 
 val transpose_conv1d_backward_input : arr -> arr -> int array -> arr -> arr
 
@@ -431,3 +462,10 @@ val of_rows : arr array -> arr
 val of_array : elt array -> int array -> arr
 
 val of_arrays : elt array array -> arr
+
+
+(** {6 Helper functions}  *)
+
+val float_to_elt : float -> elt
+
+val elt_to_float : elt -> float
