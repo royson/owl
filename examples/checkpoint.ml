@@ -35,7 +35,6 @@ let make_network input_shape =
   |> linear 10 ~act_typ:Activation.(Softmax 1)
   |> get_network
  *)
-
   |> conv2d [|3;3;3;64|] [|1;1|] ~act_typ:Activation.Relu
   |> normalisation
   |> dropout 0.3
@@ -79,8 +78,7 @@ let make_network input_shape =
   |> fully_connected 512 ~act_typ:Activation.Relu
   |> normalisation
   |> dropout 0.5
-  |> linear 10
-  (* |> linear 10 ~act_typ:Activation.(Softmax 1) *)
+  |> linear 10 ~act_typ:Activation.(Softmax 1)
   |> get_network
   (*   input input_shape
   |> normalisation ~decay:0.9
@@ -162,7 +160,7 @@ let train () =
 
   (* Hotfix. TODO: Refactor val_loss calculation in owl_optimise_generic *)
   let val_params = Params.config
-    ~batch:(Batch.Mini 128) ~learning_rate:(Learning_Rate.Adagrad 0.001) 120.0
+    ~batch:(Batch.Mini 128) ~learning_rate:(Learning_Rate.Adagrad 0.01) 120.0
   in
 
   let lowest_val_loss = ref 0. in
