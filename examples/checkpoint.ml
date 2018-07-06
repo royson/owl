@@ -217,7 +217,7 @@ let train () =
 
   (* plug in chkpt into params *)
   let params = Params.config
-    ~batch:(Batch.Mini 128) ~learning_rate:(Learning_Rate.Adagrad 0.001)
+    ~batch:(Batch.Mini 128) ~learning_rate:(Learning_Rate.Adagrad 0.01)
     ~checkpoint:(Checkpoint.Custom chkpt) ~stopping:(Stopping.Const 1e-6) 150.0
   in
   Graph.train ~params network x y |> ignore;
