@@ -35,48 +35,62 @@ let make_network input_shape =
   |> linear 10 ~act_typ:Activation.(Softmax 1)
   |> get_network
  *)
-  |> conv2d [|3;3;3;64|] [|1;1|] ~act_typ:Activation.Relu
+  |> conv2d [|3;3;3;64|] [|1;1|]
   |> normalisation
+  |> activation Activation.Relu
   |> dropout 0.3
-  |> conv2d [|3;3;64;64|] [|1;1|] ~act_typ:Activation.Relu
+  |> conv2d [|3;3;64;64|] [|1;1|]
   |> normalisation
+  |> activation Activation.Relu
   |> max_pool2d [|2;2|] [|2;2|] ~padding:VALID
-  |> conv2d [|3;3;64;128|] [|1;1|] ~act_typ:Activation.Relu
+  |> conv2d [|3;3;64;128|] [|1;1|]
   |> normalisation
+  |> activation Activation.Relu
   |> dropout 0.4
-  |> conv2d [|3;3;128;128|] [|1;1|] ~act_typ:Activation.Relu
+  |> conv2d [|3;3;128;128|] [|1;1|]
   |> normalisation
+  |> activation Activation.Relu
   |> max_pool2d [|2;2|] [|2;2|] ~padding:VALID
-  |> conv2d [|3;3;128;256|] [|1;1|] ~act_typ:Activation.Relu 
+  |> conv2d [|3;3;128;256|] [|1;1|] 
   |> normalisation
+  |> activation Activation.Relu
   |> dropout 0.4
-  |> conv2d [|3;3;256;256|] [|1;1|] ~act_typ:Activation.Relu
+  |> conv2d [|3;3;256;256|] [|1;1|]
   |> normalisation
+  |> activation Activation.Relu
   |> dropout 0.4
-  |> conv2d [|3;3;256;256|] [|1;1|] ~act_typ:Activation.Relu
+  |> conv2d [|3;3;256;256|] [|1;1|]
   |> normalisation
+  |> activation Activation.Relu
   |> max_pool2d [|2;2|] [|2;2|] ~padding:VALID
-  |> conv2d [|3;3;256;512|] [|1;1|] ~act_typ:Activation.Relu
+  |> conv2d [|3;3;256;512|] [|1;1|]
   |> normalisation
+  |> activation Activation.Relu
   |> dropout 0.4
-  |> conv2d [|3;3;512;512|] [|1;1|] ~act_typ:Activation.Relu
+  |> conv2d [|3;3;512;512|] [|1;1|]
   |> normalisation
+  |> activation Activation.Relu
   |> dropout 0.4
-  |> conv2d [|3;3;512;512|] [|1;1|] ~act_typ:Activation.Relu
+  |> conv2d [|3;3;512;512|] [|1;1|]
   |> normalisation
+  |> activation Activation.Relu
   |> max_pool2d [|2;2|] [|2;2|] ~padding:VALID
-  |> conv2d [|3;3;512;512|] [|1;1|] ~act_typ:Activation.Relu
+  |> conv2d [|3;3;512;512|] [|1;1|]
   |> normalisation
+  |> activation Activation.Relu
   |> dropout 0.4
-  |> conv2d [|3;3;512;512|] [|1;1|] ~act_typ:Activation.Relu
+  |> conv2d [|3;3;512;512|] [|1;1|]
   |> normalisation
+  |> activation Activation.Relu
   |> dropout 0.4
-  |> conv2d [|3;3;512;512|] [|1;1|] ~act_typ:Activation.Relu
+  |> conv2d [|3;3;512;512|] [|1;1|]
   |> normalisation
+  |> activation Activation.Relu
   |> max_pool2d [|2;2|] [|2;2|] ~padding:VALID
   |> dropout 0.5
-  |> fully_connected 512 ~act_typ:Activation.Relu
+  |> fully_connected 512 
   |> normalisation
+  |> activation Activation.Relu
   |> dropout 0.5
   |> linear 10 ~act_typ:Activation.(Softmax 1)
   |> get_network
