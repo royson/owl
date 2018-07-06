@@ -160,7 +160,7 @@ let train () =
 
   (* Hotfix. TODO: Refactor val_loss calculation in owl_optimise_generic *)
   let val_params = Params.config
-    ~batch:(Batch.Mini 128) ~learning_rate:(Learning_Rate.Adagrad 0.01) 120.0
+    ~batch:(Batch.Mini 128) ~learning_rate:(Learning_Rate.Adagrad 0.001) 120.0
   in
 
   let lowest_val_loss = ref 0. in
@@ -217,7 +217,7 @@ let train () =
 
   (* plug in chkpt into params *)
   let params = Params.config
-    ~batch:(Batch.Mini 128) ~learning_rate:(Learning_Rate.Adagrad 0.01)
+    ~batch:(Batch.Mini 128) ~learning_rate:(Learning_Rate.Adagrad 0.001)
     ~checkpoint:(Checkpoint.Custom chkpt) ~stopping:(Stopping.Const 1e-6) 150.0
   in
   Graph.train ~params network x y |> ignore;
