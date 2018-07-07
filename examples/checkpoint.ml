@@ -16,7 +16,7 @@ let write_float_to_file filename l =
 
 let make_network input_shape =
   input input_shape
-  |> conv2d [|3;3;3;48|] [|1;1|] ~act_typ:Activation.Relu
+(*   |> conv2d [|3;3;3;48|] [|1;1|] ~act_typ:Activation.Relu
   |> conv2d [|3;3;48;48|] [|1;1|] ~act_typ:Activation.Relu
   |> max_pool2d [|2;2|] [|2;2|] ~padding:VALID
   |> dropout 0.25 
@@ -29,13 +29,13 @@ let make_network input_shape =
   |> max_pool2d [|2;2|] [|2;2|] ~padding:VALID
   |> dropout 0.25 
   |> fully_connected 512 ~act_typ:Activation.Relu
-  |> dropout 0.5
+  |> dropout 0.5l_
   |> fully_connected 256 ~act_typ:Activation.Relu
   |> dropout 0.5
   |> linear 10 ~act_typ:Activation.(Softmax 1)
-  |> get_network
+  |> get_network *)
 
-(*   |> conv2d [|3;3;3;64|] [|1;1|]
+  |> conv2d [|3;3;3;64|] [|1;1|]
   |> normalisation
   |> activation Activation.Relu
   |> dropout 0.3
@@ -92,10 +92,10 @@ let make_network input_shape =
   |> normalisation
   |> activation Activation.Relu
   |> dropout 0.5
-  |> linear 10
-  (* |> linear 10 ~act_typ:Activation.(Softmax 1) *)
+  (* |> linear 10 *)
+  |> linear 10 ~act_typ:Activation.(Softmax 1)
   |> get_network
- *)  (*   input input_shape
+  (*   input input_shape
   |> normalisation ~decay:0.9
   |> conv2d [|3;3;3;32|] [|1;1|] ~act_typ:Activation.Relu
   |> conv2d [|3;3;32;32|] [|1;1|] ~act_typ:Activation.Relu ~padding:VALID
@@ -155,18 +155,30 @@ let test model =
 
 let train () =
   (* let x, _, y = Dataset.load_mnist_train_data_arr () in *)
-  let x, _, y = Dataset.load_cifar_train_data 1 in
-  
+  let x1, _, y1 = Dataset.load_cifar_train_data 1 in
+  let x2, _, y2 = Dataset.load_cifar_train_data 2 in
+  let x3, _, y3 = Dataset.load_cifar_train_data 3 in
+  let x4, _, y4 = Dataset.load_cifar_train_data 4 in
+  let x5, _, y5 = Dataset.load_cifar_train_data 5 in
+  let y = Dense.Matrix.S.concat_vertical y1 y2 in
+  let y = Dense.Matrix.S.concat_vertical y y3 in
+  let y = Dense.Matrix.S.concat_vertical y y4 in
+  let y = Dense.Matrix.S.concat_vertical y y5 in
+  let x = Dense.Matrix.S.concat_vertical x1 x2 in
+  let x = Dense.Matrix.S.concat_vertical x x3 in
+  let x = Dense.Matrix.S.concat_vertical x x4 in
+  let x = Dense.Matrix.S.concat_vertical x x5 in
+
   let r = Array.init (Owl_dense_ndarray.S.nth_dim x 0) (fun i -> i) in
   let r = Owl_stats.shuffle r in
   
   (* Validation data *)
-  let v_rows = Array.sub r 0 2000 in
+  let v_rows = Array.sub r 0 10000 in
   let vx = Arr (Owl_dense_ndarray.S.get_fancy [L (Array.to_list v_rows)] x) in
   let vy = Arr (Owl_dense_ndarray.S.rows y v_rows) in
 
   (* Training data *)
-  let t_rows = Array.sub r 2000 8000 in
+  let t_rows = Array.sub r 10000 40000 in
   let x = Owl_dense_ndarray.S.get_fancy [L (Array.to_list t_rows)] x in
   let y = Owl_dense_ndarray.S.rows y t_rows in
 
@@ -175,7 +187,7 @@ let train () =
 
   (* Hotfix. TODO: Refactor val_loss calculation in owl_optimise_generic *)
   let val_params = Params.config
-    ~batch:(Batch.Mini 128) ~learning_rate:(Learning_Rate.Adagrad 0.001) 120.0
+    ~batch:(Batch.Mini 128) ~learning_rate:(Learning_Rate.Adagrad 0.001) 200.0
   in
 
   let lowest_val_loss = ref 0. in
@@ -233,7 +245,7 @@ let train () =
   (* plug in chkpt into params *)
   let params = Params.config
     ~batch:(Batch.Mini 128) ~learning_rate:(Learning_Rate.Adagrad 0.001)
-    ~checkpoint:(Checkpoint.Custom chkpt) ~stopping:(Stopping.Const 1e-6) 150.0
+    ~checkpoint:(Checkpoint.Custom chkpt) ~stopping:(Stopping.Const 1e-6) 200.0
   in
   Graph.train ~params network x y |> ignore;
   (* (* keep restarting the optimisation until it finishes *)
