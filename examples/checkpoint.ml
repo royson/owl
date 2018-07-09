@@ -17,20 +17,28 @@ let write_float_to_file filename l =
 let make_network input_shape =
   input input_shape
   |> conv2d [|3;3;3;48|] [|1;1|] ~act_typ:Activation.Relu
+  |> normalisation
   |> conv2d [|3;3;48;48|] [|1;1|] ~act_typ:Activation.Relu
+  |> normalisation
   |> max_pool2d [|2;2|] [|2;2|] ~padding:VALID
   |> dropout 0.25 
   |> conv2d [|3;3;48;96|] [|1;1|] ~act_typ:Activation.Relu
+  |> normalisation
   |> conv2d [|3;3;96;96|] [|1;1|] ~act_typ:Activation.Relu
+  |> normalisation
   |> max_pool2d [|2;2|] [|2;2|] ~padding:VALID
   |> dropout 0.25 
   |> conv2d [|3;3;96;192|] [|1;1|] ~act_typ:Activation.Relu
+  |> normalisation
   |> conv2d [|3;3;192;192|] [|1;1|] ~act_typ:Activation.Relu
+  |> normalisation
   |> max_pool2d [|2;2|] [|2;2|] ~padding:VALID
   |> dropout 0.25 
   |> fully_connected 512 ~act_typ:Activation.Relu
-  |> dropout 0.5l_
+  |> normalisation
+  |> dropout 0.5
   |> fully_connected 256 ~act_typ:Activation.Relu
+  |> normalisation
   |> dropout 0.5
   |> linear 10 ~act_typ:Activation.(Softmax 1)
   |> get_network
@@ -169,10 +177,10 @@ let train () =
   let x = Dense.Matrix.S.concat_vertical x x4 in
   let x = Dense.Matrix.S.concat_vertical x x5 in
 
-  let r = Array.init (Owl_dense_ndarray.S.nth_dim x 0) (fun i -> i) in
-  let r = Owl_stats.shuffle r in
+  (* let r = Array.init (Owl_dense_ndarray.S.nth_dim x 0) (fun i -> i) in *)
+  (* let r = Owl_stats.shuffle r in *)
   
-  (* Validation data *)
+(*   (* Validation data *)
   let v_rows = Array.sub r 0 10000 in
   let vx = Arr (Owl_dense_ndarray.S.get_fancy [L (Array.to_list v_rows)] x) in
   let vy = Arr (Owl_dense_ndarray.S.rows y v_rows) in
@@ -180,19 +188,19 @@ let train () =
   (* Training data *)
   let t_rows = Array.sub r 10000 40000 in
   let x = Owl_dense_ndarray.S.get_fancy [L (Array.to_list t_rows)] x in
-  let y = Owl_dense_ndarray.S.rows y t_rows in
+  let y = Owl_dense_ndarray.S.rows y t_rows in *)
 
   (* let network = make_network [|28;28;1|] in *)
   let network = make_network [|32;32;3|] in
 
   (* Hotfix. TODO: Refactor val_loss calculation in owl_optimise_generic *)
-  let val_params = Params.config
+  (* let val_params = Params.config
     ~batch:(Batch.Mini 128) ~learning_rate:(Learning_Rate.Adagrad 0.001) 200.0
   in
-
-  let lowest_val_loss = ref 0. in
+ *)
+  (* let lowest_val_loss = ref 0. in
   let patience = ref 0 in
-
+ *)
   (* define checkpoint function *)
   let chkpt state =
     let open Checkpoint in
@@ -224,7 +232,7 @@ let train () =
       write_float_to_file "loss.txt" (c.((Array.length c) - 1));
       write_float_to_file "time.txt" (Unix.gettimeofday () -. state.start_at);
 
-      let _ = match state.current_batch mod state.batches_per_epoch = 0 with
+(*       let _ = match state.current_batch mod state.batches_per_epoch = 0 with
       | false -> ()
       | true  -> let vl = validate_model val_params network (state.current_batch / state.batches_per_epoch - 1) vx vy in
                  write_float_to_file "val_loss.txt" vl;
@@ -239,7 +247,7 @@ let train () =
       | true  -> Owl_log.info "Early stopping..";
                  state.stop <- true
 
-    )
+ *)    )
   in
 
   (* plug in chkpt into params *)
