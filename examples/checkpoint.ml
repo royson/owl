@@ -232,9 +232,10 @@ let train () =
       write_float_to_file "loss.txt" (c.((Array.length c) - 1));
       write_float_to_file "time.txt" (Unix.gettimeofday () -. state.start_at);
 
-(*       let _ = match state.current_batch mod state.batches_per_epoch = 0 with
+      let _ = match state.current_batch mod state.batches_per_epoch = 0 with
       | false -> ()
-      | true  -> let vl = validate_model val_params network (state.current_batch / state.batches_per_epoch - 1) vx vy in
+      | true -> test network
+      (* | true  -> let vl = validate_model val_params network (state.current_batch / state.batches_per_epoch - 1) vx vy in
                  write_float_to_file "val_loss.txt" vl;
                  test network;
                  match !lowest_val_loss <> 0. && vl >= !lowest_val_loss with
@@ -245,9 +246,9 @@ let train () =
       match !patience >= 50 with 
       | false -> ()
       | true  -> Owl_log.info "Early stopping..";
-                 state.stop <- true
+                 state.stop <- true *)
 
- *)    )
+    )
   in
 
   (* plug in chkpt into params *)
