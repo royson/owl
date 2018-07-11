@@ -15,8 +15,8 @@ let write_float_to_file filename l =
 
 
 let make_network input_shape =
-(*   input input_shape
-  |> conv2d [|3;3;3;48|] [|1;1|] ~act_typ:Activation.Relu
+  input input_shape
+(*   |> conv2d [|3;3;3;48|] [|1;1|] ~act_typ:Activation.Relu
   |> normalisation
   |> conv2d [|3;3;48;48|] [|1;1|] ~act_typ:Activation.Relu
   |> normalisation
@@ -42,62 +42,63 @@ let make_network input_shape =
   |> dropout 0.5
   |> linear 10 ~act_typ:Activation.(Softmax 1)
   |> get_network
- *)
+
+ *)  
   |> conv2d [|3;3;3;64|] [|1;1|]
-  |> normalisation ~decay:0.9
+  (* |> normalisation ~decay:0.9 *)
   |> activation Activation.Relu
   |> dropout 0.3
   |> conv2d [|3;3;64;64|] [|1;1|]
-  |> normalisation ~decay:0.9
+  (* |> normalisation ~decay:0.9 *)
   |> activation Activation.Relu
   |> max_pool2d [|2;2|] [|2;2|] ~padding:VALID
   |> conv2d [|3;3;64;128|] [|1;1|]
-  |> normalisation ~decay:0.9
+  (* |> normalisation ~decay:0.9 *)
   |> activation Activation.Relu
   |> dropout 0.4
   |> conv2d [|3;3;128;128|] [|1;1|]
-  |> normalisation ~decay:0.9
+  (* |> normalisation ~decay:0.9 *)
   |> activation Activation.Relu
   |> max_pool2d [|2;2|] [|2;2|] ~padding:VALID
   |> conv2d [|3;3;128;256|] [|1;1|] 
-  |> normalisation ~decay:0.9
+  (* |> normalisation ~decay:0.9 *)
   |> activation Activation.Relu
   |> dropout 0.4
   |> conv2d [|3;3;256;256|] [|1;1|]
-  |> normalisation ~decay:0.9
+  (* |> normalisation ~decay:0.9 *)
   |> activation Activation.Relu
   |> dropout 0.4
   |> conv2d [|3;3;256;256|] [|1;1|]
-  |> normalisation ~decay:0.9
+  (* |> normalisation ~decay:0.9 *)
   |> activation Activation.Relu
   |> max_pool2d [|2;2|] [|2;2|] ~padding:VALID
   |> conv2d [|3;3;256;512|] [|1;1|]
-  |> normalisation ~decay:0.9
+  (* |> normalisation ~decay:0.9 *)
   |> activation Activation.Relu
   |> dropout 0.4
   |> conv2d [|3;3;512;512|] [|1;1|]
-  |> normalisation ~decay:0.9
+  (* |> normalisation ~decay:0.9 *)
   |> activation Activation.Relu
   |> dropout 0.4
   |> conv2d [|3;3;512;512|] [|1;1|]
-  |> normalisation ~decay:0.9
+  (* |> normalisation ~decay:0.9 *)
   |> activation Activation.Relu
   |> max_pool2d [|2;2|] [|2;2|] ~padding:VALID
   |> conv2d [|3;3;512;512|] [|1;1|]
-  |> normalisation ~decay:0.9
+  (* |> normalisation ~decay:0.9 *)
   |> activation Activation.Relu
   |> dropout 0.4
   |> conv2d [|3;3;512;512|] [|1;1|]
-  |> normalisation ~decay:0.9
+  (* |> normalisation ~decay:0.9 *)
   |> activation Activation.Relu
   |> dropout 0.4
   |> conv2d [|3;3;512;512|] [|1;1|]
-  |> normalisation ~decay:0.9
+  (* |> normalisation ~decay:0.9 *)
   |> activation Activation.Relu
   |> max_pool2d [|2;2|] [|2;2|] ~padding:VALID
   |> dropout 0.5
   |> fully_connected 512 
-  |> normalisation ~decay:0.9
+  (* |> normalisation ~decay:0.9 *)
   |> activation Activation.Relu
   |> dropout 0.5
   (* |> linear 10 *)
