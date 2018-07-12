@@ -16,35 +16,35 @@ let write_float_to_file filename l =
 
 let make_network input_shape =
   input input_shape
-(*   |> conv2d [|3;3;3;48|] [|1;1|] ~act_typ:Activation.Relu
-  |> normalisation
+  |> conv2d [|3;3;3;48|] [|1;1|] ~act_typ:Activation.Relu
+  (* |> normalisation *)
   |> conv2d [|3;3;48;48|] [|1;1|] ~act_typ:Activation.Relu
-  |> normalisation
+  (* |> normalisation *)
   |> max_pool2d [|2;2|] [|2;2|] ~padding:VALID
   |> dropout 0.25 
   |> conv2d [|3;3;48;96|] [|1;1|] ~act_typ:Activation.Relu
-  |> normalisation
+  (* |> normalisation *)
   |> conv2d [|3;3;96;96|] [|1;1|] ~act_typ:Activation.Relu
-  |> normalisation
+  (* |> normalisation *)
   |> max_pool2d [|2;2|] [|2;2|] ~padding:VALID
   |> dropout 0.25 
   |> conv2d [|3;3;96;192|] [|1;1|] ~act_typ:Activation.Relu
-  |> normalisation
+  (* |> normalisation *)
   |> conv2d [|3;3;192;192|] [|1;1|] ~act_typ:Activation.Relu
-  |> normalisation
+  (* |> normalisation *)
   |> max_pool2d [|2;2|] [|2;2|] ~padding:VALID
   |> dropout 0.25 
   |> fully_connected 512 ~act_typ:Activation.Relu
-  |> normalisation
+  (* |> normalisation *)
   |> dropout 0.5
   |> fully_connected 256 ~act_typ:Activation.Relu
-  |> normalisation
+  (* |> normalisation *)
   |> dropout 0.5
   |> linear 10 ~act_typ:Activation.(Softmax 1)
   |> get_network
 
- *)  
-  |> conv2d [|3;3;3;64|] [|1;1|]
+  
+(*   |> conv2d [|3;3;3;64|] [|1;1|]
   (* |> normalisation ~decay:0.9 *)
   |> activation Activation.Relu
   |> dropout 0.3
@@ -103,7 +103,7 @@ let make_network input_shape =
   |> dropout 0.5
   (* |> linear 10 *)
   |> linear 10 ~act_typ:Activation.(Softmax 1)
-  |> get_network
+  |> get_network *)
 
   (*   input input_shape
   |> normalisation ~decay:0.9
