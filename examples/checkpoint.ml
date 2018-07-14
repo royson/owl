@@ -13,7 +13,6 @@ let write_float_to_file filename l =
   fprintf oc "%.6f," l;
   close_out oc  
 
-
 let make_network input_shape =
   input input_shape
   |> conv2d [|3;3;3;48|] [|1;1|] ~act_typ:Activation.Relu
@@ -128,10 +127,19 @@ let validate_model (params:Params.typ) model i vx vy =
   (* take the mean of the loss *)
   let loss = Maths.(loss / (F (Mat.row_num yt |> float_of_int))) in
   Owl_log.info "Validation Loss = %.6f." (unpack_flt loss);
-  unpack_flt loss 
+  unpack_flt loss  
+
+let normalise_cifar x =
+  let flat = Dense.Ndarray.D.reshape x [|-1;3|] in
+  let mean_rgb = Dense.Ndarray.D.mean ~axis:0 flat in
+  let std_rgb = Dense.Ndarray.D.std ~axis:0 flat in
+  Dense.Ndarray.D.((x - mean_rgb) / std_rgb)
 
 let test model =
   let imgs, _, labels = Dataset.load_cifar_test_data () in
+  let imgs = Dense.Ndarray.Generic.cast float64 imgs in
+  let imgs = normalise_cifar imgs in
+  let imgs = Dense.Ndarray.Generic.cast float32 imgs in
   let model = Graph.copy model in
   let mat2num x s = Dense.Matrix.S.of_array (
       x |> Dense.Matrix.Generic.max_rows
@@ -178,6 +186,9 @@ let train () =
   let x = Dense.Matrix.S.concat_vertical x x3 in
   let x = Dense.Matrix.S.concat_vertical x x4 in
   let x = Dense.Matrix.S.concat_vertical x x5 in
+  let x = Dense.Ndarray.Generic.cast float64 x in
+  let x = normalise_cifar x in
+  let x = Dense.Ndarray.Generic.cast float32 x in
 
   (* let r = Array.init (Owl_dense_ndarray.S.nth_dim x 0) (fun i -> i) in *)
   (* let r = Owl_stats.shuffle r in *)
