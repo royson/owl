@@ -87,8 +87,8 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     mutable train_size         : int;        (* Training data size for batch calculation *)
     mutable test_x             : t;          
     mutable test_y             : t;
-    mutable val_x              : t;
-    mutable val_y              : t;
+(*     mutable val_x              : t;
+    mutable val_y              : t; *)
     mutable start_at           : float;      (* Time training starts *)
     mutable schedule_no        : int;        (* Number of task scheduled. For Mini-Batch *)
     (* For Graph Plots *)
@@ -107,7 +107,8 @@ module Make (M : ModelSig) (E : EngineSig) = struct
   }
 
 
-  let make_server_task sid server_params model train_x val_x val_y test_x test_y = {
+  (* let make_server_task sid server_params model train_x val_x val_y test_x test_y = { *)
+  let make_server_task sid server_params model train_x test_x test_y = {
     sid;
     state = None;
     server_params;
@@ -115,8 +116,8 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     train_size = Arr.(shape train_x).(0);
     test_x;
     test_y;
-    val_x;
-    val_y;
+(*     val_x;
+    val_y; *)
     start_at = Unix.gettimeofday ();
     schedule_no = 0;
     loss = [];
@@ -235,7 +236,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     write_float_to_file "result.txt" res;
     Owl_log.info "Accuracy on test set: %f" res;;
 
-  let validate_model task i = 
+(*   let validate_model task i = 
     Owl_log.debug "Validation iteration: %i" i;
     let x = task.val_x in
     let y = task.val_y in
@@ -248,7 +249,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     Owl_log.debug "Validation Loss = %.6f." (unpack_flt loss);
     Gc.minor ();
     unpack_flt loss 
-
+ *)
   (* retrieve local model at parameter server, init if none *)
   let local_model task =
     try E.get task.sid |> fst
@@ -395,9 +396,9 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     (* there should be only one item in list *)
     List.map (fun (k, v) ->
       let gradient, loss = v in
-      let schedule_time = E.get (address ^ "time") |> fst in
-      let response_time = (Unix.gettimeofday () -. schedule_time) in
-      write_float_to_file "respond.txt" response_time;
+      (* let schedule_time = E.get (address ^ "time") |> fst in *)
+      (* let response_time = (Unix.gettimeofday () -. schedule_time) in *)
+      (* write_float_to_file "respond.txt" response_time; *)
       let params = task.server_params in
       let xs = task.train_size in
       let model = local_model task in
@@ -456,24 +457,31 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       (* Calculate Validation loss every epoch *)
       let _ = match Checkpoint.(state.current_batch mod (state.batches_per_epoch) = 0) with
         | false ->  ()
-        | true  ->  let vl = validate_model task (Checkpoint.(state.current_batch / (state.batches_per_epoch)) - 1) in
+        | true  ->  test_network task;
+                    (* let vl = validate_model task (Checkpoint.(state.current_batch / (state.batches_per_epoch)) - 1) in
                     write_float_to_file "val_loss.txt" vl;
-                    test_network task;
+                    test_network task
                     match task.lowest_val_loss <> 0. && vl >= task.lowest_val_loss with
                       | true  ->  task.patience <- task.patience + 1
                       | false ->  task.lowest_val_loss <- vl;
-                                  task.patience <- 0
+                                  task.patience <- 0 *)
       in
 
       (* Determine if training ends *)
-      let _ = match task.patience >= 80 || loss' < 0.05 with 
+      let _ = match loss' < 0.05 with 
       | false -> ()
       | true  -> Owl_log.info "Early stopping..";
                  Checkpoint.(state.stop <- true)
       in
+      (* 
+      let _ = match task.patience >= 80 || loss' < 0.05 with 
+      | false -> ()
+      | true  -> Owl_log.info "Early stopping..";
+                 Checkpoint.(state.stop <- true)
+      in *)
       E.set (string_of_int task.sid ^ "finish") Checkpoint.(state.stop); 
 
-      let current_progression = E.progressive_num () in
+(*       let current_progression = E.progressive_num () in
       (* Add/Remove workers for PASP barrier every 5 epochs *)
       (* let workers_changed = match Checkpoint.(state.current_batch mod (state.batches_per_epoch * 5) = 0) with *)
       (* Add/Remove workers for PASP barrier every 100 iterations *)
@@ -566,7 +574,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
                         | Nesterov _ -> params.momentum <- Momentum.Nesterov em
                         | None       -> params.momentum <- Momentum.Standard em *)
       in
-      (* Detect if decay expired. For experimental purposes. *)
+ *)      (* Detect if decay expired. For experimental purposes. *)
 (*    let decay = decay_duration task in
       let _ = match (decay <> 0 
                     && Checkpoint.(state.current_batch mod (state.batches_per_epoch * 1 + decay) = 0)) with
@@ -600,7 +608,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     (* there should be only one item in list *)
     List.map (fun (k, v) ->
       let model, t, bs = v in
-      let start_t = Unix.gettimeofday () in
+      (* let start_t = Unix.gettimeofday () in *)
       task.client_params.batch <- bs;
       (* start local training *)
       let params = task.client_params in
@@ -608,7 +616,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       let y = task.train_y in
       let grad, loss = M.calculate_gradient ~params ~init_model:false model x y t in
       let result = (grad, loss) in
-      write_float_to_file "computation.txt" (Unix.gettimeofday () -. start_t);
+      (* write_float_to_file "computation.txt" (Unix.gettimeofday () -. start_t); *)
       (k, result)      
        ) vars 
 
@@ -623,7 +631,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     in
     let sid = Owl_stats.uniform_int_rvs ~a:0 ~b:max_int in
     let cid = Owl_stats.uniform_int_rvs ~a:0 ~b:max_int in
-
+(* 
     (* Split training and validation data to 80:20 *)
     let r = Array.init (Owl_dense_ndarray.S.nth_dim x 0) (fun i -> i) in
     let r = Owl_stats.shuffle r in
@@ -637,8 +645,9 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     let t_rows = Array.sub r 2000 8000 in
     let x = Arr (Owl_dense_ndarray.S.get_fancy [L (Array.to_list t_rows)] x) in
     let y = Arr (Owl_dense_ndarray.S.rows y t_rows) in
-
-    let server_task = make_server_task sid params nn x vx vy tx ty in
+ *)
+    (* let server_task = make_server_task sid params nn x vx vy tx ty in *)
+    let server_task = make_server_task sid params nn x tx ty in
     let client_task = make_client_task cid params x y in 
     (* register sched/push/pull/stop/barrier *)
     E.register_schedule (schedule server_task);
