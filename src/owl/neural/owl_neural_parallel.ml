@@ -468,7 +468,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       in
 
       (* Determine if training ends *)
-      let _ = match loss' < 0.05 with 
+      let _ = match loss' < 0.1 with 
       | false -> ()
       | true  -> Owl_log.info "Early stopping..";
                  Checkpoint.(state.stop <- true)
@@ -481,23 +481,23 @@ module Make (M : ModelSig) (E : EngineSig) = struct
       in *)
       E.set (string_of_int task.sid ^ "finish") Checkpoint.(state.stop); 
 
-(*       let current_progression = E.progressive_num () in
+      let current_progression = E.progressive_num () in
       (* Add/Remove workers for PASP barrier every 5 epochs *)
-      (* let workers_changed = match Checkpoint.(state.current_batch mod (state.batches_per_epoch * 5) = 0) with *)
+      let workers_changed = match Checkpoint.(state.current_batch mod (state.batches_per_epoch * 5) = 0) with
       (* Add/Remove workers for PASP barrier every 100 iterations *)
-      let workers_changed = match Checkpoint.(state.current_batch mod 100 = 0) with
+      (* let workers_changed = match Checkpoint.(state.current_batch mod 100 = 0) with *)
         | false -> false
         (* Progressive mode *)
-        (* | true  -> E.add_workers current_progression *)
+        | true  -> E.add_workers current_progression
         (* Dynamic mode *)
-        | true  -> let b  = Owl_stats.uniform_int_rvs ~a:0 ~b:1 in
+(*         | true  -> let b  = Owl_stats.uniform_int_rvs ~a:0 ~b:1 in
                    let aw = Owl_stats.uniform_int_rvs ~a:1 ~b:8 in
                    let lw = Owl_stats.uniform_int_rvs ~a:1 ~b:8 in
                    match b with
                    | 1 -> Owl_log.debug "%i workers attempting to join." aw;
                           E.add_workers aw
                    | _ -> Owl_log.debug "%i workers attempting to leave." lw;
-                          E.remove_workers lw
+                          E.remove_workers lw *)
          
       in
 
@@ -574,7 +574,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
                         | Nesterov _ -> params.momentum <- Momentum.Nesterov em
                         | None       -> params.momentum <- Momentum.Standard em *)
       in
- *)      (* Detect if decay expired. For experimental purposes. *)
+      (* Detect if decay expired. For experimental purposes. *)
 (*    let decay = decay_duration task in
       let _ = match (decay <> 0 
                     && Checkpoint.(state.current_batch mod (state.batches_per_epoch * 1 + decay) = 0)) with
@@ -654,7 +654,7 @@ module Make (M : ModelSig) (E : EngineSig) = struct
     E.register_pull (pull server_task);
     E.register_push (push client_task);
     E.register_stop (stop server_task);
-    E.start ~barrier:E.ASP jid url
+    E.start ~barrier:E.PASP jid url
 
 
   let train ?params nn x y tx ty jid url = train_generic ?params nn x y 
